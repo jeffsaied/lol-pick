@@ -10,3 +10,5 @@ node_modules/
 
 # confrontos baixados do counterstats.net: cada PC baixa os seus
 confrontos-site.json
+# tiers e aprimoramentos baixados do op.gg
+desordem-site.json

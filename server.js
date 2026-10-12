@@ -8,6 +8,7 @@ const os = require('os');
 const crypto = require('crypto');
 const dica = require('./sugestao');
 const site = require('./atualizar-confrontos');
+const opgg = require('./desordem');
 
 const DIR = __dirname;
 const CFG_FILE = path.join(DIR, 'config.json');
@@ -122,6 +123,8 @@ let maestria = new Map(); // id -> pontos
 const perfis = new Map(); // id -> perfil de jogo (sugestao.js); enche aos poucos, em segundo plano
 let carregandoPerfis = false;
 let confrontos = null; // confrontos.json ja em ids
+let aprimoramentos = new Map(); // id -> { nome, icone } no idioma do cliente
+const iconesAug = new Map(); // id -> { buf, tipo }
 const nomes = new Map(); // summonerId -> nome
 const icones = new Map(); // id -> { buf, tipo }
 
@@ -133,6 +136,8 @@ async function carregarCampeoes() {
   if (ok(m) && Array.isArray(m.json)) maestria = new Map(m.json.map((x) => [x.championId, x.championPoints || 0]));
   carregarConfrontos();
   carregarPerfis();
+  const a = await lcu('GET', '/lol-game-data/assets/v1/cherry-augments.json');
+  if (ok(a) && Array.isArray(a.json)) aprimoramentos = new Map(a.json.map((x) => [x.id, { nome: x.nameTRA || '', icone: x.augmentSmallIconPath || '' }]));
 }
 
 // o do site (por rota) e o escrito a mao; qualquer um dos dois pode faltar
@@ -210,6 +215,9 @@ let estado = { lol: false, phase: 'None' };
 let assinatura = '';
 let faseAnterior = 'None';
 let fila = { id: 0, label: '', gameMode: '' };
+let partida = { modo: '', champ: 0 }; // modo ARAM ('aram' ou 'desordem') e o seu campeao, guardados ate a partida acabar
+const NOME_MODO = { aram: 'ARAM', desordem: 'ARAM: Desordem' };
+const modoAram = () => (fila.id === 2400 || fila.gameMode === 'KIWI' ? 'desordem' : (fila.id === 450 || fila.gameMode === 'ARAM' ? 'aram' : ''));
 let sessaoCS = null; // ultima sessao crua da selecao
 let pegaveis = { ids: [], em: 0 };
 let ultimoDump = 0;
@@ -266,6 +274,7 @@ function montarSelecao(s, opcoes) {
       inimigos: inimigos.map((p) => p.champ).filter(Boolean),
       pool, posicao: ((s.myTeam || []).find((p) => p.cellId === eu) || {}).assignedPosition || '',
       champs, perfis, maestria, confrontos,
+      tiers: aram ? opgg.tiers(partida.modo) : null, ondeTier: NOME_MODO[partida.modo] || '',
     }),
     timerFase: (s.timer && s.timer.phase) || '',
   };
@@ -310,6 +319,8 @@ async function ciclo() {
     }
     if (phase === 'ChampSelect') {
       pegaveis = { ids: [], em: 0 };
+      partida = { modo: modoAram(), champ: 0 };
+      if (partida.modo) opgg.atualizarLista(partida.modo).catch((e) => deuErro('dados do op.gg', e.message));
       if (perfis.size < champs.size) carregarPerfis();
       avisar('Seleção de campeões', `${fila.label} — toque para abrir`, { priority: 4, tags: ['video_game'] });
     }
@@ -340,6 +351,10 @@ async function ciclo() {
         if (ok(o) && Array.isArray(o.json)) opcoes = o.json.filter((x) => typeof x === 'number' && x > 0);
       }
       novo.cs = montarSelecao(sessaoCS, opcoes);
+      if (partida.modo === 'desordem' && novo.cs.eu.champ && novo.cs.eu.champ !== partida.champ) {
+        partida.champ = novo.cs.eu.champ;
+        opgg.atualizarCampeao(partida.champ).catch((e) => deuErro('dados do op.gg', e.message));
+      }
       restante = (sessaoCS.timer && sessaoCS.timer.adjustedTimeLeftInPhase) || 0;
       if (Date.now() - ultimoDump > 5000) {
         ultimoDump = Date.now();
@@ -351,6 +366,7 @@ async function ciclo() {
     }
   } else {
     sessaoCS = null;
+    if (!['GameStart', 'InProgress', 'Reconnect'].includes(phase)) partida = { modo: '', champ: 0 };
   }
 
   publicar(novo, restante);
@@ -399,6 +415,23 @@ const comandos = {
   },
 };
 
+// o que o painel do PC mostra nos modos ARAM: melhores campeoes na selecao e melhores aprimoramentos na Desordem
+function paraOPainel() {
+  const nome = (id) => (champs.get(id) || { name: '' }).name;
+  const cs = estado.phase === 'ChampSelect' && estado.cs && estado.cs.mode === 'aram' ? estado.cs : null;
+  const melhores = cs ? cs.sugestao.champs.filter((id) => cs.sugestao.motivos[id]).slice(0, 4)
+    .map((id) => ({ id, nome: nome(id), motivo: cs.sugestao.motivos[id].join(', ') })) : [];
+  let desordem = null;
+  if (partida.modo === 'desordem' && partida.champ) {
+    const a = opgg.aprimoramentos(partida.champ);
+    desordem = {
+      nome: nome(partida.champ), doCampeao: a.doCampeao,
+      lista: a.lista.map((x) => ({ id: x.id, tier: x.tier, nome: (aprimoramentos.get(x.id) || {}).nome || x.nome })).filter((x) => x.nome),
+    };
+  }
+  return { modo: NOME_MODO[partida.modo] || '', melhores, desordem };
+}
+
 // ---------- servidor da pagina ----------
 function json(res, codigo, obj) {
   res.writeHead(codigo, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -442,6 +475,20 @@ const servidor = http.createServer(async (req, res) => {
     return res.end(img.buf);
   }
 
+  const iconeAug = rota.match(/^\/aug\/(\d+)$/);
+  if (iconeAug) {
+    const id = Number(iconeAug[1]);
+    const a = aprimoramentos.get(id);
+    if (!iconesAug.has(id) && a && a.icone) {
+      const r = await lcu('GET', a.icone, undefined, true);
+      if (ok(r)) iconesAug.set(id, { buf: r.buf, tipo: r.tipo || 'image/png' });
+    }
+    const img = iconesAug.get(id);
+    if (!img) { res.writeHead(404); return res.end(); }
+    res.writeHead(200, { 'Content-Type': img.tipo, 'Cache-Control': 'public, max-age=86400' });
+    return res.end(img.buf);
+  }
+
   // tela de configuracao: so abre no proprio PC
   const noPC = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
   if (noPC && rota === '/pc') {
@@ -468,6 +515,7 @@ const servidor = http.createServer(async (req, res) => {
       // para o painel do PC (hud.ps1)
       aceitarSozinho: !!cfg.aceitarSozinho, lol: !!estado.lol, phase: estado.phase, fila: estado.fila || '', aceito: !!estado.aceito,
       pagina: `http://localhost:${cfg.port}/?k=${cfg.key}`,
+      ...paraOPainel(),
     });
   }
 

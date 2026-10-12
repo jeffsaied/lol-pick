@@ -95,6 +95,18 @@ function Pedir($caminho, [switch]$Post) {
         <TextBlock x:Name="AbrirQr" Text="Ligar um celular (QR codes)" Foreground="#0AC8B9" FontSize="12" Margin="0,6,0,0" Cursor="Hand"/>
       </StackPanel>
     </Border>
+    <Border x:Name="Melhores" Visibility="Collapsed" BorderBrush="#26334D" BorderThickness="0,1,0,0" Margin="14,0,14,12" Padding="0,10,0,0">
+      <StackPanel>
+        <TextBlock x:Name="MelhoresTitulo" Foreground="#C8AA6E" FontSize="10" FontWeight="Bold" Margin="0,0,0,5"/>
+        <StackPanel x:Name="MelhoresLista"/>
+      </StackPanel>
+    </Border>
+    <Border x:Name="Augs" Visibility="Collapsed" BorderBrush="#26334D" BorderThickness="0,1,0,0" Margin="14,0,14,12" Padding="0,10,0,0">
+      <StackPanel>
+        <TextBlock x:Name="AugsTitulo" Foreground="#C8AA6E" FontSize="10" FontWeight="Bold" Margin="0,0,0,5"/>
+        <StackPanel x:Name="AugsLista"/>
+      </StackPanel>
+    </Border>
     </StackPanel>
   </Border>
   </Grid>
@@ -122,6 +134,68 @@ $area = [Windows.SystemParameters]::WorkArea
 $win.Left = $area.Right - $win.Width - 8
 $win.Top  = $area.Top + 8
 
+# Uma linha das listas de ARAM: figura, nome, texto menor embaixo e o selo do tier a direita.
+$Pincel = [Windows.Media.BrushConverter]::new()
+$CorTier = @{ 0 = '#FF6B81'; 1 = '#F5A623'; 2 = '#5BC0EB' }
+function Linha($figura, $nome, $sub, $tier) {
+    $g = New-Object Windows.Controls.Grid
+    $g.Margin = '0,3,0,3'
+    foreach ($w in 'Auto', '*', 'Auto') {
+        $c = New-Object Windows.Controls.ColumnDefinition
+        if ($w -eq '*') { $c.Width = New-Object Windows.GridLength(1, 'Star') } else { $c.Width = [Windows.GridLength]::Auto }
+        $g.ColumnDefinitions.Add($c)
+    }
+    $img = New-Object Windows.Controls.Image
+    $img.Width = 28; $img.Height = 28
+    try { $img.Source = New-Object Windows.Media.Imaging.BitmapImage([Uri]$figura) } catch {}
+    [void]$g.Children.Add($img)
+    $txt = New-Object Windows.Controls.StackPanel
+    $txt.Margin = '10,0,8,0'; $txt.VerticalAlignment = 'Center'
+    $t1 = New-Object Windows.Controls.TextBlock
+    $t1.Text = $nome; $t1.Foreground = $Pincel.ConvertFromString('#F0E6D2'); $t1.FontSize = 13; $t1.TextTrimming = 'CharacterEllipsis'
+    [void]$txt.Children.Add($t1)
+    if ($sub) {
+        $t2 = New-Object Windows.Controls.TextBlock
+        $t2.Text = $sub; $t2.Foreground = $Pincel.ConvertFromString('#A09B8C'); $t2.FontSize = 11; $t2.TextTrimming = 'CharacterEllipsis'
+        [void]$txt.Children.Add($t2)
+    }
+    [Windows.Controls.Grid]::SetColumn($txt, 1)
+    [void]$g.Children.Add($txt)
+    if ($null -ne $tier) {
+        $selo = New-Object Windows.Controls.TextBlock
+        if ($tier -eq 0) { $selo.Text = 'OP' } else { $selo.Text = "T$tier" }
+        $cor = $CorTier[[int]$tier]; if (-not $cor) { $cor = '#A09B8C' }
+        $selo.Foreground = $Pincel.ConvertFromString($cor); $selo.FontSize = 13; $selo.FontWeight = 'Bold'; $selo.VerticalAlignment = 'Center'
+        [Windows.Controls.Grid]::SetColumn($selo, 2)
+        [void]$g.Children.Add($selo)
+    }
+    return $g
+}
+
+# Nos modos ARAM: melhores campeoes entre as suas opcoes (na selecao) e melhores aprimoramentos (Desordem).
+$melhores = $win.FindName('Melhores'); $melhoresTitulo = $win.FindName('MelhoresTitulo'); $melhoresLista = $win.FindName('MelhoresLista')
+$augs = $win.FindName('Augs'); $augsTitulo = $win.FindName('AugsTitulo'); $augsLista = $win.FindName('AugsLista')
+$assinaturaAram = ''
+function Mostrar-Aram($e) {
+    $sig = ($e.melhores | ConvertTo-Json -Compress -Depth 4) + '|' + ($e.desordem | ConvertTo-Json -Compress -Depth 4)
+    if ($sig -eq $script:assinaturaAram) { return }
+    $script:assinaturaAram = $sig
+    $melhoresLista.Children.Clear()
+    $augsLista.Children.Clear()
+    $lista = @($e.melhores)
+    if ($lista.Count -gt 0) {
+        $melhoresTitulo.Text = "MELHORES CAMPEÕES  ·  $($e.modo)".ToUpper()
+        foreach ($c in $lista) { [void]$melhoresLista.Children.Add((Linha "$Base/icon/$($c.id)" $c.nome $c.motivo $null)) }
+        $melhores.Visibility = 'Visible'
+    } else { $melhores.Visibility = 'Collapsed' }
+    if ($e.desordem -and @($e.desordem.lista).Count -gt 0) {
+        if ($e.desordem.doCampeao) { $augsTitulo.Text = "MELHORES APRIMORAMENTOS  ·  $($e.desordem.nome)".ToUpper() }
+        else { $augsTitulo.Text = 'MELHORES APRIMORAMENTOS  ·  GERAL' }
+        foreach ($a in @($e.desordem.lista)) { [void]$augsLista.Children.Add((Linha "$Base/aug/$($a.id)" $a.nome '' $a.tier)) }
+        $augs.Visibility = 'Visible'
+    } else { $augs.Visibility = 'Collapsed' }
+}
+
 $estado = $null
 $falhas = 0
 function Atualizar {
@@ -145,6 +219,7 @@ function Atualizar {
     elseif ($e.aceitarSozinho) { $detalhe.Text = 'Aceita a partida sozinho' }
     else { $detalhe.Text = 'Você aceita pelo celular' }
     if ($e.fila -and $e.phase -ne 'None') { $detalhe.Text += "  ·  $($e.fila)" }
+    Mostrar-Aram $e
 }
 
 # Parado por 3 s, o painel vira so a bolinha (25% de opacidade); mexer o mouse em cima abre de novo.

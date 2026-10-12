@@ -11,6 +11,7 @@ Um programinha fica rodando no PC onde o LoL está aberto. Quando a fila acha pa
 - **Normal:** caixa de busca com a foto dos campeões, em ordem alfabética, filtrando a cada letra.
 - **Ranqueada / Flex:** a mesma caixa para banir e depois para escolher. Campeão banido ou já pego fica apagado.
 - **ARAM / ARAM: Desordem:** mostra o campeão que veio para você, as opções e o banco do time; cada toque troca na hora.
+- **ARAM e ARAM: Desordem no painel do PC:** na seleção, os melhores campeões entre as suas opções e o banco, com o tier de cada um no modo; na Desordem, os 10 melhores aprimoramentos do seu campeão, com o tier, durante a seleção e a partida inteira.
 - **Time ao vivo:** os ícones atualizam conforme os outros jogadores marcam e travam.
 - **Dica:** lê o seu time e o adversário (falta de tanque ou de dano mágico, time sem linha de frente, adversário cheio de assassinos ou de tanques...) e sugere os campeões que resolvem, dando peso aos que você mais joga e aos que levam vantagem na sua rota contra quem o adversário já pegou. Ao lado vem o motivo de cada um.
 
@@ -58,6 +59,9 @@ Ao ligar, aparece um painel pequeno no canto da tela, que fica por cima do jogo 
 - Arraste pelo fundo para mudar de lugar.
 - **?** mostra os atalhos para abrir a seleção de campeões no próprio PC e os QR codes do celular.
 - **✕** desliga o programa inteiro (o mesmo que o `parar.bat`).
+- Em ARAM e ARAM: Desordem o painel cresce para mostrar os melhores campeões e os melhores aprimoramentos. Passe o mouse na bolinha para ver. Para aparecer por cima do jogo, o LoL precisa estar em "sem bordas" ou "janela" (não em tela cheia).
+
+O programa não enxerga quais aprimoramentos o jogo ofereceu: ele mostra a lista dos melhores para o seu campeão e você confere quais dos três estão nela.
 
 ## Sua chave
 
@@ -75,7 +79,7 @@ Se alguma coisa falhar (o site dos confrontos mudou, o LoL passou a responder di
 
 ## Créditos
 
-Os confrontos são lidos das páginas públicas do [counterstats.net](https://www.counterstats.net) (MOBAFire); cada PC baixa a sua cópia, o projeto não redistribui esses dados.
+Os confrontos são lidos das páginas públicas do [counterstats.net](https://www.counterstats.net) (MOBAFire), e os tiers de ARAM e os aprimoramentos da Desordem, das páginas públicas do [op.gg](https://op.gg/lol/modes/aram-mayhem); cada PC baixa a sua cópia, o projeto não redistribui esses dados.
 
 Os QR codes usam o [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) de Kazuhiko Arase (licença MIT), em `vendor/qrcode.js`.
 

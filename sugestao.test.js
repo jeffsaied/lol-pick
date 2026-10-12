@@ -83,6 +83,12 @@ test('pagina do counterstats vira tabela por rota', () => {
   });
 });
 
+test('nos modos ARAM o tier do campeao entra na conta', () => {
+  const r = sugerir({ ...base, pool: [4, 5, 7], tiers: new Map([[4, 1], [5, 3], [7, 5]]), ondeTier: 'ARAM: Desordem' });
+  assert.deepStrictEqual(r.champs, [4]); // Lux (tier 3) nao ganha nada e Garen (tier 5) perde ponto
+  assert.deepStrictEqual(r.motivos[4], ['tier 1 no ARAM: Desordem']);
+});
+
 test('campeao sem perfil carregado ainda entra pela classe', () => {
   const r = sugerir({ ...base, aliados: [2], perfis: new Map(), pool: [1, 5] });
   assert.deepStrictEqual(r.falta, ['tanque', 'dano mágico', 'atirador', 'suporte']);

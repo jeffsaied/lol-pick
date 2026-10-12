@@ -79,7 +79,8 @@ function lerTime(ids, champs, perfis) {
 }
 
 // aliados e inimigos: ids ja escolhidos (sem voce). pool: ids que voce pode pegar. posicao: a do LoL (top, jungle...).
-function sugerir({ aliados, inimigos, pool, posicao, champs, perfis, maestria, confrontos, quantos = 6 }) {
+// tiers: id -> tier do campeao no modo (1 e o melhor), com o nome do modo em ondeTier; so nos modos ARAM
+function sugerir({ aliados, inimigos, pool, posicao, champs, perfis, maestria, confrontos, tiers, ondeTier = '', quantos = 6 }) {
   const meu = lerTime(aliados, champs, perfis);
   const deles = lerTime(inimigos, champs, perfis);
   const falta = meu.n ? PRECISA.filter((r) => !meu.papeis.has(r)) : [];
@@ -133,6 +134,13 @@ function sugerir({ aliados, inimigos, pool, posicao, champs, perfis, maestria, c
       if (combina.has(`${id}+${a}`)) { pontos += 2; motivos.push('combina com ' + nome(a)); }
     }
     if (c.roles.some((r) => daPosicao.includes(r))) pontos += 2;
+
+    const tier = tiers ? tiers.get(id) : 0;
+    if (tier) {
+      pontos += [0, 3, 2, 0, -1, -2][tier] || 0;
+      if (tier <= 2) motivos.push(`tier ${tier} no ${ondeTier}`);
+      if (tier >= 4) motivos.push(`fraco no ${ondeTier}`);
+    }
 
     // maestria: 1 mil = 1, 10 mil = 2, 100 mil = 3, 1 milhao = 4
     const pts = maestria.get(id) || 0;
