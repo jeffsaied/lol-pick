@@ -26,6 +26,14 @@ public static class Tela {
   [DllImport("user32.dll")] public static extern int SetWindowLong(IntPtr h, int i, int v);
   // A janela que esta na frente: { processo, x, y, largura, altura } da area util dela, em pixels da tela.
   // Devolve tudo de uma vez porque o [ref] do PowerShell nao volta preenchido dentro do temporizador.
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr FindWindow(string classe, string titulo);
+  // Onde esta o painel do PC (hud.ps1) na tela: { esquerda, cima, direita, baixo }; tudo zero se nao achou.
+  public static int[] Painel() {
+    IntPtr h = FindWindow(null, "Pick Automático");
+    R r = new R();
+    if (h != IntPtr.Zero) GetWindowRect(h, out r);
+    return new int[] { r.L, r.T, r.Rt, r.B };
+  }
   public static int[] Frente() {
     IntPtr h = GetForegroundWindow();
     uint pid; GetWindowThreadProcessId(h, out pid);
@@ -261,9 +269,14 @@ function Passo {
     $o = [pscustomobject]@{ X = $f[1]; Y = $f[2] }; $w = $f[3]; $h = $f[4]
     if ($w -lt 400 -or $h -lt 300) { Esconder; return }
     $y1 = [int]($h * $forma.Faixa[0]); $y2 = [int]($h * $forma.Faixa[1])
-    try { $linhas = Ler-Imagem (Fotografar $o.X ($o.Y + $y1) $w ($y2 - $y1)) } catch { Anotar-Erro $_; Esconder; return }
+    # so o miolo da janela, onde as cartas ficam: nas pontas ha outros textos (inclusive a lista do nosso painel)
+    $x1 = [int]($w * 0.15); $x2 = [int]($w * 0.85)
+    try { $linhas = Ler-Imagem (Fotografar ($o.X + $x1) ($o.Y + $y1) ($x2 - $x1) ($y2 - $y1)) } catch { Anotar-Erro $_; Esconder; return }
     $cartas = @(Achar-Cartas $linhas @($d.itens))
-    foreach ($c in $cartas) { $c.CY += $y1 }
+    foreach ($c in $cartas) { $c.CX += $x1; $c.CY += $y1 }
+    # o painel pode ter sido arrastado para o meio: nome lido dentro dele nao e carta
+    $p = [Tela]::Painel()
+    $cartas = @($cartas | Where-Object { $x = $_.CX + $o.X; $y = $_.CY + $o.Y; -not ($x -ge $p[0] -and $x -le $p[2] -and $y -ge $p[1] -and $y -le $p[3]) })
     # a posicao da janela entra na conta: se o jogo for arrastado, as cartas continuam no mesmo lugar dentro dele
     $sig = "$($o.X),$($o.Y),$w,$h|" + (($cartas | ForEach-Object { "$($_.Item.chave)@$([int]($_.CX / 8)),$([int]($_.CY / 8))" }) -join '|')
     if ($sig -eq $script:assinatura) { return }
@@ -279,12 +292,13 @@ if ($Foto) {
     Indexar $lista
     $img = New-Object System.Drawing.Bitmap $Foto
     $y1 = [int]($img.Height * $forma.Faixa[0]); $y2 = [int]($img.Height * $forma.Faixa[1])
-    $faixa = $img.Clone((New-Object System.Drawing.Rectangle 0, $y1, $img.Width, ($y2 - $y1)), $img.PixelFormat)
+    $x1 = [int]($img.Width * 0.15); $x2 = [int]($img.Width * 0.85)
+    $faixa = $img.Clone((New-Object System.Drawing.Rectangle $x1, $y1, ($x2 - $x1), ($y2 - $y1)), $img.PixelFormat)
     $t = [Diagnostics.Stopwatch]::StartNew()
     $linhas = Ler-Imagem $faixa
     $cartas = @(Achar-Cartas $linhas $lista)
-    "leitura em $($t.ElapsedMilliseconds) ms; linhas lidas: $($linhas.Count); cartas: $($cartas.Count)"
-    foreach ($c in $cartas) { "  $($c.Item.nome) -> $($c.Item.rotulo) | centro $([int]$c.CX),$([int]($c.CY + $y1))" }
+    "leitura em $($t.ElapsedMilliseconds) ms; linhas lidas: $($linhas.Count); cartas: $($cartas.Count); painel em $([Tela]::Painel() -join ',')"
+    foreach ($c in $cartas) { "  $($c.Item.nome) -> $($c.Item.rotulo) | centro $([int]($c.CX + $x1)),$([int]($c.CY + $y1))" }
     $mutex.ReleaseMutex()
     return
 }
