@@ -100,6 +100,7 @@ function Pedir($caminho, [switch]$Post) {
     <Border x:Name="Melhores" Visibility="Collapsed" BorderBrush="#26334D" BorderThickness="0,1,0,0" Margin="14,0,14,12" Padding="0,10,0,0">
       <StackPanel>
         <TextBlock x:Name="MelhoresTitulo" Foreground="#C8AA6E" FontSize="10" FontWeight="Bold" Margin="0,0,0,5"/>
+        <TextBlock x:Name="MelhoresLeitura" Foreground="#A09B8C" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,5" Visibility="Collapsed"/>
         <StackPanel x:Name="MelhoresLista"/>
       </StackPanel>
     </Border>
@@ -197,12 +198,13 @@ function Fileira($rotulo, $lista) {
 }
 
 # Nos modos ARAM: melhores campeoes entre as suas opcoes (na selecao) e melhores aprimoramentos (Desordem).
+$melhoresLeitura = $win.FindName('MelhoresLeitura')
 $melhores = $win.FindName('Melhores'); $melhoresTitulo = $win.FindName('MelhoresTitulo'); $melhoresLista = $win.FindName('MelhoresLista')
 $itens = $win.FindName('Itens'); $itensTitulo = $win.FindName('ItensTitulo'); $itensLista = $win.FindName('ItensLista')
 $augs = $win.FindName('Augs'); $augsTitulo = $win.FindName('AugsTitulo'); $augsLista = $win.FindName('AugsLista')
 $assinaturaAram = ''
 function Mostrar-Aram($e) {
-    $sig = ($e.melhores | ConvertTo-Json -Compress -Depth 4) + '|' + ($e.desordem | ConvertTo-Json -Compress -Depth 4)
+    $sig = [string]$e.leitura + '|' + ($e.melhores | ConvertTo-Json -Compress -Depth 4) + '|' + ($e.desordem | ConvertTo-Json -Compress -Depth 4)
     if ($sig -eq $script:assinaturaAram) { return }
     $script:assinaturaAram = $sig
     $melhoresLista.Children.Clear()
@@ -219,7 +221,9 @@ function Mostrar-Aram($e) {
     } else { $itens.Visibility = 'Collapsed' }
     $lista = @($e.melhores)
     if ($lista.Count -gt 0) {
-        $melhoresTitulo.Text = "MELHORES CAMPEÕES  ·  $($e.modo)".ToUpper()
+        $melhoresTitulo.Text = ([string]$e.tituloMelhores).ToUpper()
+        $melhoresLeitura.Text = [string]$e.leitura
+        $melhoresLeitura.Visibility = if ($e.leitura) { 'Visible' } else { 'Collapsed' }
         foreach ($c in $lista) { [void]$melhoresLista.Children.Add((Linha "$Base/icon/$($c.id)" $c.nome $c.motivo $null)) }
         $melhores.Visibility = 'Visible'
     } else { $melhores.Visibility = 'Collapsed' }

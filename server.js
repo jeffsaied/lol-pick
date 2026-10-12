@@ -437,13 +437,22 @@ const comandos = {
   },
 };
 
-// o que o painel do PC mostra nos modos ARAM: melhores campeoes na selecao e melhores aprimoramentos na Desordem
+// o que o painel do PC mostra: na selecao, os melhores campeoes para o time (em qualquer modo); na Desordem, itens e aprimoramentos
 function paraOPainel() {
   const nome = (id) => (champs.get(id) || { name: '' }).name;
-  const cs = estado.phase === 'ChampSelect' && estado.cs && estado.cs.mode === 'aram' ? estado.cs : null;
-  const melhores = cs ? cs.sugestao.champs.filter((id) => cs.sugestao.motivos[id]).slice(0, 4)
-    .filter((id) => ((opgg.campeao(partida.modo, id) || {}).tier || 3) <= 3) // fraco no modo nao entra em "melhores"
-    .map((id) => ({ id, nome: nome(id), motivo: cs.sugestao.motivos[id].join(', ') })) : [];
+  const cs = estado.phase === 'ChampSelect' && estado.cs ? estado.cs : null;
+  const aram = !!cs && cs.mode === 'aram';
+  let melhores = [];
+  if (aram) {
+    melhores = cs.sugestao.champs.filter((id) => cs.sugestao.motivos[id])
+      .filter((id) => ((opgg.campeao(partida.modo, id) || {}).tier || 3) <= 3) // fraco no modo nao entra em "melhores"
+      .slice(0, 4).map((id) => ({ id, nome: nome(id), motivo: cs.sugestao.motivos[id].join(', ') }));
+  } else if (cs) {
+    // nos outros modos e a mesma dica do celular: time, adversario, rota e maestria
+    melhores = cs.sugestao.champs.slice(0, 5)
+      .map((id) => ({ id, nome: nome(id), motivo: (cs.sugestao.motivos[id] || ['dos seus mais jogados']).join(', ') }));
+  }
+  const leitura = cs && !aram ? [...(cs.sugestao.falta.length ? ['Falta: ' + cs.sugestao.falta.join(', ')] : []), ...cs.sugestao.leitura].join(' · ') : '';
   let desordem = null;
   if (partida.modo === 'desordem' && partida.champ) {
     const a = opgg.aprimoramentos(partida.champ);
@@ -456,7 +465,7 @@ function paraOPainel() {
       lista: a.lista.map((x) => ({ id: x.id, tier: x.tier, nome: (aprimoramentos.get(x.id) || {}).nome || x.nome })).filter((x) => x.nome),
     };
   }
-  return { modo: NOME_MODO[partida.modo] || '', melhores, desordem };
+  return { modo: NOME_MODO[partida.modo] || '', tituloMelhores: aram ? `Melhores campeões  ·  ${NOME_MODO[partida.modo] || 'ARAM'}` : 'Melhores para este time', leitura, melhores, desordem };
 }
 
 // as cartas que podem estar na tela agora, com a nota de cada uma: o cartas.ps1 le os nomes na tela e desenha por cima
