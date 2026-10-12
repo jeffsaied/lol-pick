@@ -140,7 +140,7 @@ async function carregarCampeoes() {
   carregarConfrontos();
   carregarPerfis();
   const a = await lcu('GET', '/lol-game-data/assets/v1/cherry-augments.json');
-  if (ok(a) && Array.isArray(a.json)) aprimoramentos = new Map(a.json.map((x) => [x.id, { nome: x.nameTRA || '', icone: x.augmentSmallIconPath || '' }]));
+  if (ok(a) && Array.isArray(a.json)) aprimoramentos = new Map(a.json.map((x) => [x.id, { nome: x.nameTRA || '', icone: x.augmentSmallIconPath || '', aram: /^ARAM_/.test(x.augmentNameId || '') }]));
   const it = await lcu('GET', '/lol-game-data/assets/v1/items.json');
   if (ok(it) && Array.isArray(it.json)) itensDoJogo = new Map(it.json.map((x) => [x.id, { nome: x.name || '', icone: x.iconPath || '' }]));
 }
@@ -475,9 +475,14 @@ function cartasNaTela() {
   }
   if (partida.modo === 'desordem' && ['GameStart', 'InProgress', 'Reconnect'].includes(estado.phase)) {
     const doCampeao = nome(partida.champ);
+    const comNota = opgg.todosAprimoramentos(partida.champ);
+    const temNota = new Set(comNota.map((a) => a.id));
+    // os do modo que o op.gg ainda nao avaliou entram sem nota, para a carta ser reconhecida mesmo assim
+    const semNota = [...aprimoramentos].filter(([id, a]) => a.aram && a.nome && !temNota.has(id))
+      .map(([, a]) => ({ nome: a.nome, tier: null, ordem: 900, rotulo: 'sem nota' }));
     return {
       tipo: 'aprimoramentos',
-      itens: opgg.todosAprimoramentos(partida.champ).map((a) => {
+      itens: semNota.concat(comNota.map((a) => {
         const tier = a.tier === 0 ? 'OP' : `T${a.tier}`;
         return {
           nome: (aprimoramentos.get(a.id) || {}).nome || a.nome, tier: a.tier,
@@ -485,7 +490,7 @@ function cartasNaTela() {
           ordem: a.lugar || 100 + a.tier * 100 - a.nota,
           rotulo: a.lugar ? `${tier}  ·  ${a.lugar}º do ${doCampeao}` : tier,
         };
-      }),
+      })),
     };
   }
   return { tipo: '', itens: [] };

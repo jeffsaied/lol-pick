@@ -283,6 +283,7 @@ function Indexar($itens) {
 }
 $ultimoPedido = [datetime]::MinValue
 $assinatura = ''
+$relendo = $false
 function Esconder { if ($script:assinatura -ne '') { $quadro.Children.Clear(); $script:assinatura = '' } }
 
 # Um erro nao pode derrubar o desenho; o ultimo fica anotado para quem for investigar.
@@ -320,7 +321,14 @@ function Passo {
     $cartas = @(Arrumar-Cartas $cartas $forma $h)
     # a posicao da janela entra na conta: se o jogo for arrastado, as cartas continuam no mesmo lugar dentro dele
     $sig = "$($o.X),$($o.Y),$w,$h|" + (($cartas | ForEach-Object { "$($_.Item.chave)@$([int]($_.CX / 8)),$([int]($_.CY / 8))" }) -join '|')
-    if ($sig -eq $script:assinatura) { return }
+    if ($sig -eq $script:assinatura) { $script:relendo = $false; return }
+    # A foto da tela inclui o nosso proprio desenho. Se a leitura mudou e veio incompleta com desenho na tela,
+    # pode ser uma moldura velha tampando um nome: apaga tudo e le de novo, limpo, no proximo passo.
+    if ($cartas.Count -lt 3 -and $quadro.Children.Count -gt 0 -and -not $script:relendo) {
+        $quadro.Children.Clear(); $script:assinatura = ''; $script:relendo = $true
+        return
+    }
+    $script:relendo = $false
     $script:assinatura = $sig
     $win.Left = $o.X; $win.Top = $o.Y; $win.Width = $w; $win.Height = $h
     Desenhar $cartas $forma $h
