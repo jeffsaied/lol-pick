@@ -36,5 +36,6 @@ if errorlevel 1 (
   powershell -NoProfile -Command "Start-Process netsh -Verb RunAs -Wait -ArgumentList 'advfirewall firewall add rule name=lol-pick-8787 dir=in action=allow protocol=TCP localport=8787'"
 )
 
+set LOLPICK_JANELA=1
 node server.js
 pause
