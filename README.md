@@ -1,4 +1,4 @@
-# lol-pick
+# Pick Automático
 
 Seleção de campeões do League of Legends pelo celular.
 

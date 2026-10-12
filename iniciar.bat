@@ -1,12 +1,12 @@
 @echo off
-title lol-pick
+title Pick Automatico
 cd /d "%~dp0"
 
 where node >nul 2>&1
 if not errorlevel 1 goto temnode
 
 rem Sem Node.js: oferece instalar pelo winget, o instalador oficial da Microsoft que ja vem no Windows.
-echo O lol-pick precisa do Node.js, que nao esta neste PC.
+echo O Pick Automatico precisa do Node.js, que nao esta neste PC.
 where winget >nul 2>&1
 if errorlevel 1 goto manual
 choice /c SN /m "Instalar agora o Node.js oficial pelo winget da Microsoft"

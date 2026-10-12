@@ -1,5 +1,5 @@
 'use strict';
-// lol-pick: le o cliente do LoL no PC, serve a pagina do celular e avisa pelo ntfy.
+// Pick Automatico (lol-pick): le o cliente do LoL no PC, serve a pagina do celular e avisa pelo ntfy.
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
@@ -376,6 +376,12 @@ const servidor = http.createServer(async (req, res) => {
     return res.end(fs.readFileSync(path.join(DIR, 'index.html')));
   }
 
+  const iconeApp = rota.match(/^\/(icone-(?:192|512)\.png)$/);
+  if (iconeApp) {
+    res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' });
+    return res.end(fs.readFileSync(path.join(DIR, iconeApp[1])));
+  }
+
   const icone = rota.match(/^\/icon\/(\d+)$/);
   if (icone) {
     const id = Number(icone[1]);
@@ -402,7 +408,7 @@ const servidor = http.createServer(async (req, res) => {
   if (noPC && rota === '/api/pc') {
     if (req.method === 'POST') {
       const acao = url.searchParams.get('acao');
-      if (acao === 'teste') avisar('Teste do lol-pick', 'Se você está lendo isto, o aviso funciona.', { priority: 4, tags: ['bell'] });
+      if (acao === 'teste') avisar('Teste do Pick Automático', 'Se você está lendo isto, o aviso funciona.', { priority: 4, tags: ['bell'] });
       if (acao === 'concluir') marcarConfigurado();
       return json(res, 200, { ok: true });
     }
@@ -432,7 +438,8 @@ const servidor = http.createServer(async (req, res) => {
 
   if (rota === '/manifest.webmanifest') {
     return json(res, 200, {
-      name: 'LoL Pick', short_name: 'LoL Pick', start_url: `/?k=${cfg.key}`,
+      name: 'Pick Automático', short_name: 'Pick Automático',
+      icons: [192, 512].map((n) => ({ src: `/icone-${n}.png`, sizes: `${n}x${n}`, type: 'image/png', purpose: 'any maskable' })), start_url: `/?k=${cfg.key}`,
       display: 'standalone', background_color: '#0a1018', theme_color: '#0a1018',
     });
   }
@@ -463,10 +470,10 @@ const servidor = http.createServer(async (req, res) => {
 setInterval(() => { for (const c of clientes) c.write(': ping\n\n'); }, 20000);
 
 servidor.listen(cfg.port, '0.0.0.0', () => {
-  console.log('lol-pick ligado.');
+  console.log('Pick Automatico ligado.');
   console.log('  Pagina do celular: ' + LINK);
   console.log('  Topico do ntfy:    ' + (cfg.topic || '(desligado)'));
-  avisar('lol-pick ligado', 'Toque para abrir a página no celular', { priority: 2, tags: ['white_check_mark'] });
+  avisar('Pick Automático ligado', 'Toque para abrir a página no celular', { priority: 2, tags: ['white_check_mark'] });
   if ((!cfg.configurado || process.env.LOLPICK_CONFIGURAR) && !process.env.LOLPICK_SEM_NTFY) {
     require('child_process').exec(`start "" "http://localhost:${cfg.port}/pc"`);
   }

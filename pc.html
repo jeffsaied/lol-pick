@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LoL Pick — ligar o celular</title>
+<title>Pick Automático — ligar o celular</title>
+<link rel="icon" href="/icone-192.png">
 <style>
   :root { --fundo: #0a1018; --painel: #111b27; --borda: #223244; --texto: #e8e3d5; --fraco: #8696a8; --ouro: #c8aa6e; --ok: #3ccf7e; }
   * { box-sizing: border-box; }
@@ -68,7 +69,7 @@ function render() {
   $('proximo').textContent = fim ? 'Fechar' : passo === 2 ? 'Concluir' : 'Próximo';
   if (fim) {
     $('titulo').textContent = 'Tudo ligado';
-    $('texto').textContent = 'Pode fechar esta aba. Deixe a janela preta do lol-pick aberta enquanto joga; da próxima vez é só clicar no iniciar.bat.';
+    $('texto').textContent = 'Pode fechar esta aba. Deixe a janela preta do Pick Automático aberta enquanto joga; da próxima vez é só clicar no iniciar.bat.';
     return;
   }
   if (passo === 0) {
