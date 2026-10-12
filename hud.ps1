@@ -45,7 +45,7 @@ function Pedir($caminho, [switch]$Post) {
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Pick Automático" Width="392" SizeToContent="Height" WindowStyle="None" AllowsTransparency="True"
-        Background="Transparent" Topmost="True" ResizeMode="NoResize" WindowStartupLocation="Manual">
+        Background="Transparent" Topmost="True" ResizeMode="NoResize" WindowStartupLocation="Manual" ShowActivated="False">
   <Grid>
   <Ellipse x:Name="Bolinha" Width="35" Height="35" Fill="#1FA84A" Stroke="#F0E6D2" StrokeThickness="1.5" Visibility="Collapsed"
            HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,40,55,6"/>
@@ -82,6 +82,8 @@ function Pedir($caminho, [switch]$Post) {
       </Grid>
       <TextBlock x:Name="Fechar" Text="✕" Foreground="#A09B8C" FontSize="13" Cursor="Hand" ToolTip="Fechar (desliga o Pick Automático)"
                  HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,7,11,0"/>
+      <TextBlock x:Name="Clipe" Text="&#x1F4CC;" FontFamily="Segoe UI Emoji" Foreground="#5B6577" FontSize="13" Cursor="Hand"
+                 ToolTip="Manter o painel aberto (não virar bolinha)" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
       <TextBlock x:Name="Ajuda" Text="?" Foreground="#C8AA6E" FontSize="14" FontWeight="Bold" Cursor="Hand" ToolTip="Mostrar ou esconder as opções"
                  HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,12,8"/>
     </Grid>
@@ -208,6 +210,9 @@ function Atualizar {
     }
     $script:falhas = 0
     $script:estado = $e
+    $script:fixo = [bool]$e.painelFixo
+    if ($script:fixo) { $clipe.Foreground = $Pincel.ConvertFromString('#C8AA6E'); if ($script:compacto) { Compactar $false } }
+    else { $clipe.Foreground = $Pincel.ConvertFromString('#5B6577') }
     if ($e.aceitarSozinho) { $botao.Background = $verde; $botao.Content = 'ON'; $bolinha.Fill = $verde }
     else { $botao.Background = $vermelho; $botao.Content = 'OFF'; $bolinha.Fill = $vermelho }
 
@@ -224,6 +229,8 @@ function Atualizar {
 
 # Parado por 3 s, o painel vira so a bolinha (25% de opacidade); mexer o mouse em cima abre de novo.
 $compacto = $false
+$fixo = $false # o clipe: preso, o painel nao vira bolinha
+$clipe = $win.FindName('Clipe')
 $ultimoMexer = Get-Date
 $ultimaPos = ''
 function Compactar($sim) {
@@ -244,7 +251,7 @@ $win.Add_MouseMove({
 $timerParado = New-Object Windows.Threading.DispatcherTimer
 $timerParado.Interval = [TimeSpan]::FromMilliseconds(250)
 $timerParado.Add_Tick({
-    if (-not $script:compacto -and ((Get-Date) - $script:ultimoMexer).TotalSeconds -ge 3) { Compactar $true }
+    if (-not $script:fixo -and -not $script:compacto -and ((Get-Date) - $script:ultimoMexer).TotalSeconds -ge 3) { Compactar $true }
 })
 $timerParado.Start()
 
@@ -252,6 +259,13 @@ $botao.Add_Click({
     $script:ultimoMexer = Get-Date
     if ($script:estado -and $script:estado.aceitarSozinho) { $ligado = 0 } else { $ligado = 1 }
     [void](Pedir "/api/pc?acao=auto&ligado=$ligado" -Post)
+    Atualizar
+})
+$clipe.Add_MouseLeftButtonDown({
+    $_.Handled = $true
+    $script:ultimoMexer = Get-Date
+    if ($script:fixo) { $ligado = 0 } else { $ligado = 1 }
+    [void](Pedir "/api/pc?acao=fixo&ligado=$ligado" -Post)
     Atualizar
 })
 # O X desliga o programa inteiro, como o parar.bat.

@@ -53,7 +53,7 @@ function lerLista(html) {
   const champs = {};
   for (const c of listaEm(s, '"champions":[{"key"')) {
     const id = c.champion_id || c.id;
-    if (id && c.tier) champs[id] = { tier: c.tier, chave: c.key };
+    if (id && c.tier) champs[id] = { tier: c.tier, lugar: c.rank || 0, chave: c.key };
   }
   const augs = {};
   for (const a of listaEm(s, '"data":[{"id"')) {
@@ -67,7 +67,8 @@ const lerCampeao = (html) => [...new Set([...carga(html).matchAll(/"metaId":(\d+
 
 // baixa a lista do modo se a guardada tiver mais de um dia
 async function atualizarLista(modo) {
-  if (!PAGINA[modo] || fresco(dados.listas[modo], DIA)) return;
+  const temLugar = dados.listas[modo] && Object.values(dados.listas[modo].champs).some((c) => c.lugar); // arquivo de versao antiga nao tinha
+  if (!PAGINA[modo] || (temLugar && fresco(dados.listas[modo], DIA))) return;
   const lista = lerLista(await pagina(PAGINA[modo]));
   if (Object.keys(lista.champs).length < 100) throw new Error('a pagina do op.gg mudou: nao achei a lista de campeoes');
   dados.listas[modo] = { em: new Date().toISOString(), ...lista };
@@ -92,6 +93,16 @@ function tiers(modo) {
   return l ? new Map(Object.entries(l.champs).map(([id, c]) => [Number(id), c.tier])) : null;
 }
 
+// tier e lugar do campeao no modo, ou null
+const campeao = (modo, id) => (dados.listas[modo] && dados.listas[modo].champs[id]) || null;
+
+// todos os aprimoramentos com tier, e o lugar de cada um na lista do campeao (0 = fora dos 10 melhores dele)
+function todosAprimoramentos(id) {
+  const augs = (dados.listas.desordem || { augs: {} }).augs;
+  const doCampeao = (dados.porCampeao[id] || { ids: [] }).ids;
+  return Object.keys(augs).map((a) => ({ id: Number(a), tier: augs[a].tier, nome: augs[a].nome, nota: augs[a].nota, lugar: doCampeao.indexOf(Number(a)) + 1 }));
+}
+
 // os melhores aprimoramentos do campeao; sem a pagina dele, os melhores no geral
 function aprimoramentos(id, quantos = 10) {
   const augs = (dados.listas.desordem || { augs: {} }).augs;
@@ -102,4 +113,4 @@ function aprimoramentos(id, quantos = 10) {
   return { doCampeao: false, lista: gerais.slice(0, quantos).map(um) };
 }
 
-module.exports = { ARQUIVO, lerLista, lerCampeao, atualizarLista, atualizarCampeao, tiers, aprimoramentos };
+module.exports = { ARQUIVO, lerLista, lerCampeao, atualizarLista, atualizarCampeao, tiers, campeao, aprimoramentos, todosAprimoramentos };

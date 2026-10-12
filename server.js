@@ -24,6 +24,7 @@ function loadConfig() {
     lockfile: 'C:\\Riot Games\\League of Legends\\lockfile',
     confrontosDoSite: true, // baixa os confrontos do counterstats.net a cada 14 dias
     aceitarSozinho: true, // o botao ON/OFF do painel do PC
+    painelFixo: false, // o clipe do painel: fica aberto em vez de virar bolinha
     configurado: false,
   };
   let cfg = {};
@@ -366,11 +367,27 @@ async function ciclo() {
     }
   } else {
     sessaoCS = null;
-    if (!['GameStart', 'InProgress', 'Reconnect'].includes(phase)) partida = { modo: '', champ: 0 };
+    const emJogo = ['GameStart', 'InProgress', 'Reconnect'].includes(phase);
+    if (!emJogo) partida = { modo: '', champ: 0 };
+    else if (!partida.champ && modoAram()) await acharPartida(); // o programa foi ligado com a partida ja andando
   }
 
   publicar(novo, restante);
   return phase === 'ChampSelect' || phase === 'ReadyCheck' ? 400 : 1500;
+}
+
+// sem ter visto a selecao: o modo vem da fila e o seu campeao, da lista de escolhas da partida
+async function acharPartida() {
+  const g = await lcu('GET', '/lol-gameflow/v1/session');
+  const eu = await lcu('GET', '/lol-summoner/v1/current-summoner');
+  if (!ok(g) || !ok(eu) || !g.json || !eu.json) return;
+  const dados = g.json.gameData || {};
+  const todos = [...(dados.playerChampionSelections || []), ...(dados.teamOne || []), ...(dados.teamTwo || [])];
+  const meu = todos.find((p) => p.puuid && p.puuid === eu.json.puuid && p.championId);
+  if (!meu) return;
+  partida = { modo: modoAram(), champ: meu.championId };
+  opgg.atualizarLista(partida.modo).catch((e) => deuErro('dados do op.gg', e.message));
+  if (partida.modo === 'desordem') opgg.atualizarCampeao(partida.champ).catch((e) => deuErro('dados do op.gg', e.message));
 }
 
 async function laco() {
@@ -420,6 +437,7 @@ function paraOPainel() {
   const nome = (id) => (champs.get(id) || { name: '' }).name;
   const cs = estado.phase === 'ChampSelect' && estado.cs && estado.cs.mode === 'aram' ? estado.cs : null;
   const melhores = cs ? cs.sugestao.champs.filter((id) => cs.sugestao.motivos[id]).slice(0, 4)
+    .filter((id) => ((opgg.campeao(partida.modo, id) || {}).tier || 3) <= 3) // fraco no modo nao entra em "melhores"
     .map((id) => ({ id, nome: nome(id), motivo: cs.sugestao.motivos[id].join(', ') })) : [];
   let desordem = null;
   if (partida.modo === 'desordem' && partida.champ) {
@@ -430,6 +448,38 @@ function paraOPainel() {
     };
   }
   return { modo: NOME_MODO[partida.modo] || '', melhores, desordem };
+}
+
+// as cartas que podem estar na tela agora, com a nota de cada uma: o cartas.ps1 le os nomes na tela e desenha por cima
+function cartasNaTela() {
+  const nome = (id) => (champs.get(id) || { name: '' }).name;
+  const cs = estado.phase === 'ChampSelect' && estado.cs && estado.cs.mode === 'aram' ? estado.cs : null;
+  if (cs && partida.modo) {
+    const ids = [...new Set([cs.eu.champ, ...cs.opcoes, ...cs.banco].filter(Boolean))];
+    return {
+      tipo: 'campeoes',
+      itens: ids.map((id) => {
+        const c = opgg.campeao(partida.modo, id);
+        return { nome: nome(id), tier: c ? c.tier : null, ordem: c ? c.lugar || 500 : 999, rotulo: c ? `T${c.tier}  ·  ${c.lugar}º` : 'sem dados' };
+      }).filter((x) => x.nome),
+    };
+  }
+  if (partida.modo === 'desordem' && ['GameStart', 'InProgress', 'Reconnect'].includes(estado.phase)) {
+    const doCampeao = nome(partida.champ);
+    return {
+      tipo: 'aprimoramentos',
+      itens: opgg.todosAprimoramentos(partida.champ).map((a) => {
+        const tier = a.tier === 0 ? 'OP' : `T${a.tier}`;
+        return {
+          nome: (aprimoramentos.get(a.id) || {}).nome || a.nome, tier: a.tier,
+          // primeiro os 10 melhores do campeao, na ordem; depois o resto, pelo tier geral
+          ordem: a.lugar || 100 + a.tier * 100 - a.nota,
+          rotulo: a.lugar ? `${tier}  ·  ${a.lugar}º do ${doCampeao}` : tier,
+        };
+      }),
+    };
+  }
+  return { tipo: '', itens: [] };
 }
 
 // ---------- servidor da pagina ----------
@@ -499,12 +549,14 @@ const servidor = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' });
     return res.end(fs.readFileSync(path.join(DIR, 'vendor', 'qrcode.js')));
   }
+  if (noPC && rota === '/api/cartas') return json(res, 200, cartasNaTela());
   if (noPC && rota === '/api/pc') {
     if (req.method === 'POST') {
       const acao = url.searchParams.get('acao');
       if (acao === 'teste') avisar('Teste do Pick Automático', 'Se você está lendo isto, o aviso funciona.', { priority: 4, tags: ['bell'] });
       if (acao === 'concluir') salvarConfig({ configurado: true });
       if (acao === 'auto') salvarConfig({ aceitarSozinho: url.searchParams.get('ligado') === '1' }); // botao do painel (hud.ps1)
+      if (acao === 'fixo') salvarConfig({ painelFixo: url.searchParams.get('ligado') === '1' }); // clipe do painel
       if (acao === 'desligar') setTimeout(() => process.exit(0), 200); // pedido do parar.bat
       return json(res, 200, { ok: true });
     }
@@ -513,7 +565,7 @@ const servidor = http.createServer(async (req, res) => {
       celulares: [...clientes].filter((c) => c.deFora).length,
       vincular: `${BASE}/vincular?k=${cfg.key}`, lido: qrLido,
       // para o painel do PC (hud.ps1)
-      aceitarSozinho: !!cfg.aceitarSozinho, lol: !!estado.lol, phase: estado.phase, fila: estado.fila || '', aceito: !!estado.aceito,
+      aceitarSozinho: !!cfg.aceitarSozinho, painelFixo: !!cfg.painelFixo, lol: !!estado.lol, phase: estado.phase, fila: estado.fila || '', aceito: !!estado.aceito,
       pagina: `http://localhost:${cfg.port}/?k=${cfg.key}`,
       ...paraOPainel(),
     });
@@ -578,10 +630,12 @@ servidor.listen(cfg.port, '0.0.0.0', () => {
     require('child_process').exec(`start "" "http://localhost:${cfg.port}/pc"`);
   }
   laco();
-  // painel no canto da tela do PC, com o botao de aceitar sozinho
+  // painel no canto da tela do PC (botao de aceitar sozinho) e as notas por cima das cartas
   if (!process.env.LOLPICK_SEM_HUD) {
-    require('child_process').spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', path.join(DIR, 'hud.ps1'), '-Porta', String(cfg.port)],
-      { windowsHide: true, stdio: 'ignore' }).unref(); // sem "detached": sem console o PowerShell fecha na hora
+    for (const ps1 of ['hud.ps1', 'cartas.ps1']) {
+      require('child_process').spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', path.join(DIR, ps1), '-Porta', String(cfg.port)],
+        { windowsHide: true, stdio: 'ignore' }).unref(); // sem "detached": sem console o PowerShell fecha na hora
+    }
   }
   if (cfg.confrontosDoSite && !process.env.LOLPICK_SEM_SITE) {
     site.atualizarSePreciso(console.log).then((novo) => { if (novo && champs.size) carregarConfrontos(); })
