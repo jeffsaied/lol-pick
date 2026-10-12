@@ -1,15 +1,17 @@
 'use strict';
-// Dados de ARAM e ARAM: Desordem lidos do op.gg: tier de cada campeao, tier de cada aprimoramento e os melhores
-// aprimoramentos de cada campeao. Guarda em desordem-site.json. As listas valem 1 dia; a de cada campeao, 3.
+// Dados lidos do op.gg: tier de cada campeao em ARAM e ARAM: Desordem, tier de cada aprimoramento, os melhores
+// aprimoramentos e itens de cada campeao, e as runas mais usadas. Guarda em desordem-site.json.
+// As listas valem 1 dia; o que e de cada campeao, 3.
 const fs = require('fs');
 const path = require('path');
 
-const SITE = process.env.LOLPICK_OPGG || 'https://op.gg/lol/modes/';
+const SITE = process.env.LOLPICK_OPGG || 'https://op.gg/lol/';
 const ARQUIVO = path.join(__dirname, 'desordem-site.json');
-const PAGINA = { desordem: 'aram-mayhem', aram: 'aram' };
+const PAGINA = { desordem: 'modes/aram-mayhem', aram: 'modes/aram' };
+const ROTA = { top: 'top', jungle: 'jungle', middle: 'mid', bottom: 'adc', utility: 'support' }; // do LoL -> do op.gg
 const DIA = 24 * 3600 * 1000;
 
-let dados = { listas: {}, porCampeao: {} };
+let dados = { listas: {}, porCampeao: {}, runas: {} };
 try { dados = { ...dados, ...JSON.parse(fs.readFileSync(ARQUIVO, 'utf8')) }; } catch {}
 const gravar = () => { try { fs.writeFileSync(ARQUIVO, JSON.stringify(dados)); } catch {} };
 const fresco = (x, prazo) => !!x && Date.now() - Date.parse(x.em) < prazo;
@@ -93,7 +95,7 @@ async function atualizarCampeao(id) {
   await atualizarLista('desordem');
   const c = dados.listas.desordem.champs[id];
   if (!c) return;
-  const html = await pagina(`aram-mayhem/${c.chave}/build`);
+  const html = await pagina(`modes/aram-mayhem/${c.chave}/build`);
   const ids = lerCampeao(html);
   if (!ids.length) throw new Error(`a pagina do op.gg mudou: nao achei os aprimoramentos de ${c.chave}`);
   dados.porCampeao[id] = { em: new Date().toISOString(), ids, itens: lerItens(html) };
@@ -104,6 +106,34 @@ async function atualizarCampeao(id) {
 function tiers(modo) {
   const l = dados.listas[modo];
   return l ? new Map(Object.entries(l.champs).map(([id, c]) => [Number(id), c.tier])) : null;
+}
+
+// pagina de build -> a pagina de runas mais usada: { primaria, secundaria, ids } (4 da arvore principal, 2 da outra, 3 fragmentos)
+function lerRunas(html) {
+  const s = carga(html);
+  let m = /"importClientData":\{[^}]*?"primaryStyleId":(\d+),"subStyleId":(\d+),"selectedPerkIds":\[([\d,]+)\]/.exec(s); // partida normal e ranqueada
+  if (m) return { primaria: Number(m[1]), secundaria: Number(m[2]), ids: m[3].split(',').map(Number) };
+  m = /"primary_rune_ids":\[([\d,]+)\],"secondary_rune_ids":\[([\d,]+)\],"stat_mod_ids":\[([\d,]+)\][^{}]*?"primary_page_id":(\d+),"secondary_page_id":(\d+)/.exec(s); // ARAM
+  if (m) return { primaria: Number(m[4]), secundaria: Number(m[5]), ids: [m[1], m[2], m[3]].join(',').split(',').map(Number) };
+  return null;
+}
+
+// Runas mais usadas com o campeao. modo: 'aram', 'desordem' ou '' (partida normal/ranqueada, ai vale a rota).
+// apelido: o nome interno do campeao no LoL, usado se a lista do op.gg ainda nao disse como ele chama o campeao.
+async function runas(modo, id, posicao, apelido) {
+  const chaveGuardada = `${modo ? 'aram' : 'sr'}|${id}|${modo ? '' : posicao || ''}`;
+  if (fresco(dados.runas[chaveGuardada], 3 * DIA)) return dados.runas[chaveGuardada];
+  await atualizarLista('aram').catch(() => {}); // so para saber o nome do campeao no site
+  const doSite = dados.listas.aram && dados.listas.aram.champs[id];
+  const nome = doSite ? doSite.chave : String(apelido || '').toLowerCase();
+  if (!nome) return null;
+  // a Desordem nao tem pagina de runas propria: vale a do ARAM
+  const caminho = modo ? `modes/aram/${nome}/build` : `champions/${nome}/build${ROTA[posicao] ? '/' + ROTA[posicao] : ''}`;
+  const r = lerRunas(await pagina(caminho));
+  if (!r || r.ids.length !== 9) throw new Error(`a pagina do op.gg mudou: nao achei as runas de ${nome}`);
+  dados.runas[chaveGuardada] = { em: new Date().toISOString(), ...r };
+  gravar();
+  return dados.runas[chaveGuardada];
 }
 
 // itens mais usados com o campeao na Desordem, ou null se a pagina dele ainda nao foi baixada
@@ -129,4 +159,4 @@ function aprimoramentos(id, quantos = 10) {
   return { doCampeao: false, lista: gerais.slice(0, quantos).map(um) };
 }
 
-module.exports = { ARQUIVO, lerLista, lerCampeao, atualizarLista, atualizarCampeao, lerItens, tiers, campeao, itens, aprimoramentos, todosAprimoramentos };
+module.exports = { ARQUIVO, lerLista, lerCampeao, atualizarLista, atualizarCampeao, lerItens, lerRunas, runas, tiers, campeao, itens, aprimoramentos, todosAprimoramentos };

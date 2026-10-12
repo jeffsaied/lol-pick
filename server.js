@@ -25,6 +25,7 @@ function loadConfig() {
     confrontosDoSite: true, // baixa os confrontos do counterstats.net a cada 14 dias
     aceitarSozinho: true, // o botao ON/OFF do painel do PC
     painelFixo: false, // o clipe do painel: fica aberto em vez de virar bolinha
+    puxarRunas: true, // monta a pagina de runas do campeao escolhido
     configurado: false,
   };
   let cfg = {};
@@ -229,6 +230,9 @@ let ultimoDump = 0;
 const clientes = new Set();
 let qrLido = false; // o celular ja leu o QR de ligar o ntfy
 let cartasVivo = { pid: 0, em: 0 }; // ultimo sinal de vida do cartas.ps1
+let runasAlvo = { chave: '', desde: 0 }; // campeao (e rota) que esta com voce agora, e desde quando
+let runasFeitas = ''; // a chave para a qual a pagina de runas ja foi montada
+let runasAviso = ''; // o que o painel mostra sobre as runas
 
 function montarSelecao(s, opcoes) {
   const eu = s.localPlayerCellId;
@@ -326,6 +330,7 @@ async function ciclo() {
     if (phase === 'ChampSelect') {
       pegaveis = { ids: [], em: 0 };
       partida = { modo: modoAram(), champ: 0 };
+      runasFeitas = ''; runasAviso = ''; runasAlvo = { chave: '', desde: 0 };
       if (partida.modo) opgg.atualizarLista(partida.modo).catch((e) => deuErro('dados do op.gg', e.message));
       if (perfis.size < champs.size) carregarPerfis();
       avisar('Seleção de campeões', `${fila.label} — toque para abrir`, { priority: 4, tags: ['video_game'] });
@@ -357,6 +362,15 @@ async function ciclo() {
         if (ok(o) && Array.isArray(o.json)) opcoes = o.json.filter((x) => typeof x === 'number' && x > 0);
       }
       novo.cs = montarSelecao(sessaoCS, opcoes);
+      // runas: no ARAM o campeao muda a toda hora, entao espera ele parar uns segundos; nos outros modos, so ao travar
+      const alvo = novo.cs.mode === 'aram' ? novo.cs.eu.champ : (novo.cs.eu.locked ? novo.cs.eu.champ : 0);
+      const posicao = ((sessaoCS.myTeam || []).find((p) => p.cellId === sessaoCS.localPlayerCellId) || {}).assignedPosition || '';
+      const chaveRunas = alvo ? `${alvo}|${posicao}` : '';
+      if (chaveRunas !== runasAlvo.chave) runasAlvo = { chave: chaveRunas, desde: Date.now() };
+      if (cfg.puxarRunas && chaveRunas && chaveRunas !== runasFeitas && Date.now() - runasAlvo.desde > (novo.cs.mode === 'aram' ? 2500 : 0)) {
+        runasFeitas = chaveRunas;
+        puxarRunas(alvo, posicao).catch((e) => { runasAviso = 'Runas: não consegui buscar'; deuErro('runas do op.gg', e.message); });
+      }
       if (partida.modo === 'desordem' && novo.cs.eu.champ && novo.cs.eu.champ !== partida.champ) {
         partida.champ = novo.cs.eu.champ;
         opgg.atualizarCampeao(partida.champ).catch((e) => deuErro('dados do op.gg', e.message));
@@ -379,6 +393,23 @@ async function ciclo() {
 
   publicar(novo, restante);
   return phase === 'ChampSelect' || phase === 'ReadyCheck' ? 400 : 1500;
+}
+
+// Monta no cliente a pagina de runas mais usada com o campeao. So mexe na pagina que o proprio programa criou
+// (nome comecando por "Pick Automático"); as paginas da pessoa nunca sao apagadas.
+async function puxarRunas(champ, posicao) {
+  const c = champs.get(champ);
+  if (!c) return;
+  const r = await opgg.runas(partida.modo, champ, posicao, c.alias);
+  if (!r) return;
+  const pags = await lcu('GET', '/lol-perks/v1/pages');
+  if (!ok(pags) || !Array.isArray(pags.json)) { runasAviso = 'Runas: o LoL não respondeu'; return; }
+  for (const p of pags.json.filter((x) => String(x.name || '').startsWith('Pick Automático'))) await lcu('DELETE', `/lol-perks/v1/pages/${p.id}`);
+  const nova = await lcu('POST', '/lol-perks/v1/pages', {
+    name: `Pick Automático: ${c.name}`, primaryStyleId: r.primaria, subStyleId: r.secundaria, selectedPerkIds: r.ids, current: true,
+  });
+  runasAviso = ok(nova) ? `Runas de ${c.name} prontas` : 'Runas: sem espaço — apague uma página de runas no LoL';
+  console.log(runasAviso + (ok(nova) ? '' : ` (${(nova.json && nova.json.message) || nova.status})`));
 }
 
 // sem ter visto a selecao: o modo vem da fila e o seu campeao, da lista de escolhas da partida
@@ -585,6 +616,7 @@ const servidor = http.createServer(async (req, res) => {
       if (acao === 'concluir') salvarConfig({ configurado: true });
       if (acao === 'auto') salvarConfig({ aceitarSozinho: url.searchParams.get('ligado') === '1' }); // botao do painel (hud.ps1)
       if (acao === 'fixo') salvarConfig({ painelFixo: url.searchParams.get('ligado') === '1' }); // clipe do painel
+      if (acao === 'runas') salvarConfig({ puxarRunas: url.searchParams.get('ligado') === '1' });
       if (acao === 'desligar') setTimeout(() => process.exit(0), 200); // pedido do parar.bat
       return json(res, 200, { ok: true });
     }
@@ -593,7 +625,7 @@ const servidor = http.createServer(async (req, res) => {
       celulares: [...clientes].filter((c) => c.deFora).length,
       vincular: `${BASE}/vincular?k=${cfg.key}`, lido: qrLido,
       // para o painel do PC (hud.ps1)
-      aceitarSozinho: !!cfg.aceitarSozinho, painelFixo: !!cfg.painelFixo, lol: !!estado.lol, phase: estado.phase, fila: estado.fila || '', aceito: !!estado.aceito,
+      aceitarSozinho: !!cfg.aceitarSozinho, painelFixo: !!cfg.painelFixo, puxarRunas: !!cfg.puxarRunas, runas: estado.phase === 'ChampSelect' ? runasAviso : '', lol: !!estado.lol, phase: estado.phase, fila: estado.fila || '', aceito: !!estado.aceito,
       pagina: `http://localhost:${cfg.port}/?k=${cfg.key}`,
       ...paraOPainel(),
     });

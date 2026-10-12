@@ -12,6 +12,7 @@ Um programinha fica rodando no PC onde o LoL está aberto. Quando a fila acha pa
 - **Ranqueada / Flex:** a mesma caixa para banir e depois para escolher. Campeão banido ou já pego fica apagado.
 - **ARAM / ARAM: Desordem:** mostra o campeão que veio para você, as opções e o banco do time; cada toque troca na hora.
 - **ARAM e ARAM: Desordem no painel do PC:** na seleção, os melhores campeões entre as suas opções e o banco, com o tier de cada um no modo; na Desordem, os 10 melhores aprimoramentos do seu campeão, com o tier, durante a seleção e a partida inteira.
+- **Runas sozinho:** quando você trava o campeão (no ARAM, quando ele para de mudar), o programa monta no LoL a página de runas mais usada com ele, pela sua rota. Ele só cria e troca a página "Pick Automático"; as suas páginas não são tocadas. Liga e desliga no **?** do painel.
 - **Melhores campeões no painel do PC:** na seleção de qualquer modo, o painel lista os campeões que melhor completam o seu time (e respondem ao adversário, quando ele aparece), com o motivo de cada um.
 - **Itens na Desordem:** o painel mostra os itens mais usados com o seu campeão no modo: iniciais, botas e as três builds mais comuns.
 - **Nota em cima das cartas:** o programa lê o nome de cada carta na tela e desenha por cima o tier e uma linha em volta, mais grossa e verde na melhor. Vale para as cartas de campeão na seleção do ARAM e para as cartas de aprimoramento da Desordem, já pensando no seu campeão.

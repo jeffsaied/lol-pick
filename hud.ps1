@@ -93,6 +93,8 @@ function Pedir($caminho, [switch]$Post) {
         <TextBlock Text="ON: aceita a partida sozinho quando a fila encontra" Foreground="#F0E6D2" FontSize="12" Margin="0,2"/>
         <TextBlock Text="OFF: você aceita pelo celular ou no PC" Foreground="#F0E6D2" FontSize="12" Margin="0,2"/>
         <TextBlock Text="Banir, escolher e trocar no ARAM continuam pelo celular." Foreground="#A09B8C" FontSize="11" Margin="0,2,0,0" TextWrapping="Wrap"/>
+        <TextBlock x:Name="LigarRunas" Text="" Foreground="#0AC8B9" FontSize="12" Margin="0,10,0,0" Cursor="Hand"
+                   ToolTip="Montar sozinho a página de runas do campeão escolhido"/>
         <TextBlock x:Name="AbrirPagina" Text="Abrir a seleção de campeões neste PC" Foreground="#0AC8B9" FontSize="12" Margin="0,10,0,0" Cursor="Hand"/>
         <TextBlock x:Name="AbrirQr" Text="Ligar um celular (QR codes)" Foreground="#0AC8B9" FontSize="12" Margin="0,6,0,0" Cursor="Hand"/>
       </StackPanel>
@@ -261,6 +263,8 @@ function Atualizar {
     elseif ($e.aceitarSozinho) { $detalhe.Text = 'Aceita a partida sozinho' }
     else { $detalhe.Text = 'Você aceita pelo celular' }
     if ($e.fila -and $e.phase -ne 'None') { $detalhe.Text += "  ·  $($e.fila)" }
+    if ($e.runas) { $detalhe.Text = [string]$e.runas }
+    $ligarRunas.Text = if ($e.puxarRunas) { 'Runas automáticas: LIGADAS (clique para desligar)' } else { 'Runas automáticas: desligadas (clique para ligar)' }
     Mostrar-Aram $e
 }
 
@@ -268,6 +272,7 @@ function Atualizar {
 $compacto = $false
 $fixo = $false # o clipe: preso, o painel nao vira bolinha
 $clipe = $win.FindName('Clipe')
+$ligarRunas = $win.FindName('LigarRunas')
 $ultimoMexer = Get-Date
 $ultimaPos = ''
 function Compactar($sim) {
@@ -303,6 +308,12 @@ $clipe.Add_MouseLeftButtonDown({
     $script:ultimoMexer = Get-Date
     if ($script:fixo) { $ligado = 0 } else { $ligado = 1 }
     [void](Pedir "/api/pc?acao=fixo&ligado=$ligado" -Post)
+    Atualizar
+})
+$ligarRunas.Add_MouseLeftButtonDown({
+    $_.Handled = $true
+    if ($script:estado -and $script:estado.puxarRunas) { $ligado = 0 } else { $ligado = 1 }
+    [void](Pedir "/api/pc?acao=runas&ligado=$ligado" -Post)
     Atualizar
 })
 # O X desliga o programa inteiro, como o parar.bat.
