@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LoL Pick — ligar o celular</title>
+<style>
+  :root { --fundo: #0a1018; --painel: #111b27; --borda: #223244; --texto: #e8e3d5; --fraco: #8696a8; --ouro: #c8aa6e; --ok: #3ccf7e; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--fundo); color: var(--texto); font: 17px/1.45 system-ui, "Segoe UI", sans-serif; }
+  .cartao { width: min(560px, 92vw); padding: 32px; border-radius: 20px; background: var(--painel); border: 1px solid var(--borda); text-align: center; }
+  .passos { display: flex; justify-content: center; gap: 10px; margin-bottom: 18px; }
+  .passos i { width: 44px; height: 5px; border-radius: 3px; background: var(--borda); }
+  .passos i.on { background: var(--ouro); }
+  small.n { color: var(--ouro); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; font-size: 12px; }
+  h1 { margin: 6px 0 8px; font-size: 26px; }
+  p { margin: 0 0 18px; color: var(--fraco); }
+  #qr { width: 300px; height: 300px; margin: 0 auto 16px; padding: 14px; background: #fff; border-radius: 16px; }
+  #qr svg { width: 100%; height: 100%; display: block; }
+  code { display: inline-block; padding: 6px 12px; border-radius: 8px; background: var(--fundo); border: 1px solid var(--borda); color: var(--texto); font-size: 15px; user-select: all; word-break: break-all; }
+  .linha { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+  button { font: inherit; font-weight: 700; padding: 13px 22px; border-radius: 12px; border: 1px solid var(--borda); background: transparent; color: var(--texto); cursor: pointer; }
+  button.p { background: var(--ouro); border-color: var(--ouro); color: #1a1408; }
+  button.sel { border-color: var(--ouro); color: var(--ouro); }
+  button:disabled { opacity: .35; cursor: not-allowed; }
+  #status { margin-top: 14px; font-weight: 700; min-height: 1.5em; }
+  #status.ok { color: var(--ok); }
+</style>
+</head>
+<body>
+<div class="cartao">
+  <div class="passos"><i></i><i></i><i></i></div>
+  <small class="n" id="n"></small>
+  <h1 id="titulo"></h1>
+  <p id="texto"></p>
+  <div id="lojas" class="linha" style="margin:0 0 16px" hidden>
+    <button data-loja="android" class="sel">Android</button><button data-loja="iphone">iPhone</button>
+  </div>
+  <div id="qr"></div>
+  <div id="extra"></div>
+  <div id="status"></div>
+  <div class="linha"><button id="voltar">Voltar</button><button id="teste" hidden>Mandar aviso de teste</button><button id="proximo" class="p"></button></div>
+</div>
+<script src="/qrcode.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const LOJAS = {
+  android: 'https://play.google.com/store/apps/details?id=io.heckel.ntfy',
+  iphone: 'https://apps.apple.com/app/ntfy/id1625396347',
+};
+let info = null, passo = 0, loja = 'android', fim = false;
+
+function qr(texto) {
+  const q = qrcode(0, 'M');
+  q.addData(texto); q.make();
+  $('qr').innerHTML = q.createSvgTag({ cellSize: 8, margin: 0, scalable: true });
+}
+
+function render() {
+  document.querySelectorAll('.passos i').forEach((el, i) => el.classList.toggle('on', i <= passo));
+  $('n').textContent = fim ? 'Pronto' : `Passo ${passo + 1} de 3`;
+  $('lojas').hidden = passo !== 0 || fim;
+  $('teste').hidden = passo !== 1 || fim;
+  $('voltar').hidden = passo === 0 || fim;
+  $('qr').hidden = fim;
+  $('extra').innerHTML = '';
+  $('status').textContent = ''; $('status').className = '';
+  $('proximo').textContent = fim ? 'Fechar' : passo === 2 ? 'Concluir' : 'Próximo';
+  if (fim) {
+    $('titulo').textContent = 'Tudo ligado';
+    $('texto').textContent = 'Pode fechar esta aba. Deixe a janela preta do lol-pick aberta enquanto joga; da próxima vez é só clicar no iniciar.bat.';
+    return;
+  }
+  if (passo === 0) {
+    $('titulo').textContent = 'Baixe o ntfy no celular';
+    $('texto').textContent = 'Aponte a câmera do celular para o código. Já tem o ntfy? Vá em Próximo.';
+    qr(LOJAS[loja]);
+  } else if (passo === 1) {
+    $('titulo').textContent = 'Ligue o ntfy a este PC';
+    $('texto').textContent = 'Aponte a câmera (celular na mesma rede do PC) e toque em "Abrir no ntfy". O aviso de teste libera depois que o código for lido.';
+    qr(info.vincular);
+    $('extra').innerHTML = `<code>${info.topic}</code>`;
+    lido(info.lido);
+  } else {
+    $('titulo').textContent = 'Abra o app no celular';
+    $('texto').textContent = 'Aponte a câmera (celular no mesmo Wi-Fi do PC). Quando abrir, toque no menu ⋮ do navegador e em "Adicionar à tela inicial".';
+    qr(info.link);
+    $('extra').innerHTML = `<code>${info.link}</code>`;
+  }
+}
+
+$('lojas').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-loja]'); if (!b) return;
+  loja = b.dataset.loja;
+  document.querySelectorAll('[data-loja]').forEach((x) => x.classList.toggle('sel', x === b));
+  render();
+});
+$('voltar').addEventListener('click', () => { passo--; render(); });
+$('teste').addEventListener('click', async () => {
+  await fetch('/api/pc?acao=teste', { method: 'POST' });
+  $('status').textContent = 'Aviso enviado — veja se chegou no celular.';
+});
+$('proximo').addEventListener('click', async () => {
+  if (fim) return window.close();
+  if (passo < 2) { passo++; return render(); }
+  await fetch('/api/pc?acao=concluir', { method: 'POST' });
+  fim = true; render();
+});
+
+function lido(sim) {
+  $('teste').disabled = !sim;
+  if (sim && !$('status').textContent) { $('status').textContent = 'Código lido ✓ — agora mande o aviso de teste.'; $('status').className = 'ok'; }
+}
+
+setInterval(async () => {
+  if (fim || passo === 0) return;
+  try {
+    const r = await (await fetch('/api/pc')).json();
+    info.lido = r.lido;
+    if (passo === 1) lido(r.lido);
+    if (passo === 2 && r.celulares > 0) { $('status').textContent = 'Celular conectado ✓'; $('status').className = 'ok'; }
+  } catch {}
+}, 1500);
+
+fetch('/api/pc').then((r) => r.json()).then((j) => { info = j; render(); });
+</script>
+</body>
+</html>

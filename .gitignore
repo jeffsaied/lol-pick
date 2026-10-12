@@ -1,0 +1,5 @@
+# chave e topico de cada pessoa: gerados na primeira vez que o programa liga
+config.json
+# o que o cliente do LoL mandou (tem nome de jogador)
+debug/
+node_modules/

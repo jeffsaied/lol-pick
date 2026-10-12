@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a1018">
+<title>LoL Pick</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a1018'/%3E%3Cpath d='M20 14h8v30h18l-4 8H20z' fill='%23c8aa6e'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --fundo: #0a1018; --painel: #111b27; --borda: #223244; --texto: #e8e3d5; --fraco: #8696a8;
+    --ouro: #c8aa6e; --azul: #0ac8b9; --verm: #e0475a; --ok: #3ccf7e;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--fundo); color: var(--texto); font: 15px/1.35 system-ui, "Segoe UI", Roboto, sans-serif; }
+  body { padding-bottom: 96px; }
+  [hidden] { display: none !important; }
+  header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+    background: rgba(10,16,24,.94); backdrop-filter: blur(8px); border-bottom: 1px solid var(--borda); }
+  #ponto { width: 10px; height: 10px; border-radius: 50%; background: var(--verm); flex: none; }
+  #ponto.on { background: var(--ok); }
+  #fila { flex: 1; font-weight: 700; letter-spacing: .02em; color: var(--ouro); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #timer { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 20px; min-width: 2ch; text-align: right; }
+  #timer.pouco { color: var(--verm); }
+  main { padding: 14px 16px; max-width: 640px; margin: 0 auto; }
+  .centro { text-align: center; padding: 22vh 0 0; color: var(--fraco); font-size: 17px; }
+  .centro b { display: block; color: var(--texto); font-size: 24px; margin-bottom: 6px; }
+  button { font: inherit; color: inherit; border: 0; cursor: pointer; }
+  .grande { width: 100%; padding: 18px; border-radius: 14px; font-size: 19px; font-weight: 800; letter-spacing: .03em;
+    background: linear-gradient(180deg, #e2c98c, var(--ouro)); color: #1a1408; }
+  .grande.ban { background: linear-gradient(180deg, #f06677, var(--verm)); color: #fff; }
+  .grande:disabled { opacity: .5; }
+  h2 { margin: 18px 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--fraco); }
+  .time { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .jog { text-align: center; min-width: 0; }
+  .jog .foto { position: relative; aspect-ratio: 1; border-radius: 12px; background: var(--painel); border: 2px solid var(--borda); overflow: hidden; }
+  .jog img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .jog.intent img { opacity: .45; }
+  .jog.locked .foto { border-color: var(--ouro); }
+  .jog.me .foto { box-shadow: 0 0 0 2px var(--azul); }
+  .jog.inimigo.locked .foto { border-color: var(--verm); }
+  .jog small { display: block; margin-top: 4px; font-size: 11px; color: var(--fraco); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .jog small.c { color: var(--texto); font-weight: 600; }
+  .bans { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 10px; font-size: 12px; color: var(--fraco); }
+  .bans img { width: 30px; height: 30px; border-radius: 8px; filter: grayscale(1) brightness(.7); border: 1px solid var(--verm); }
+  #aviso { margin: 16px 0 10px; padding: 12px 14px; border-radius: 12px; background: var(--painel); border: 1px solid var(--borda); font-weight: 700; }
+  #aviso.vez { border-color: var(--ouro); color: var(--ouro); }
+  #aviso.vezban { border-color: var(--verm); color: #ff8b99; }
+  #dica { margin: 0 0 10px; font-size: 13px; color: var(--fraco); }
+  .tira { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+  .tira button { flex: none; width: 54px; padding: 0; background: none; }
+  .tira img { width: 54px; height: 54px; border-radius: 12px; border: 2px solid var(--azul); display: block; }
+  #busca { width: 100%; padding: 14px 16px; margin: 6px 0 12px; font: inherit; font-size: 17px; color: var(--texto);
+    background: var(--painel); border: 1px solid var(--borda); border-radius: 12px; outline: none; }
+  #busca:focus { border-color: var(--ouro); }
+  .grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 10px; }
+  .ch { padding: 0; background: none; text-align: center; min-width: 0; }
+  .ch img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; border: 2px solid var(--borda); display: block; background: var(--painel); }
+  .ch span { display: block; margin-top: 3px; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ch.sel img { border-color: var(--ouro); box-shadow: 0 0 0 3px rgba(200,170,110,.35); }
+  .ch.off { opacity: .28; pointer-events: none; }
+  .ch.dica img { border-color: var(--azul); }
+  #meu { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 16px; background: var(--painel); border: 2px solid var(--ouro); }
+  #meu img { width: 96px; height: 96px; border-radius: 14px; flex: none; }
+  #meu small { display: block; color: var(--fraco); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
+  #meu b { font-size: 24px; }
+  #dado { margin-top: 12px; width: 100%; padding: 13px; border-radius: 12px; background: var(--painel); border: 1px solid var(--borda); font-weight: 700; }
+  footer { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(180deg, transparent, var(--fundo) 30%); }
+  footer > div { max-width: 640px; margin: 0 auto; }
+  #tipoBtn { flex: none; padding: 6px 12px; border-radius: 999px; background: var(--painel); border: 1px solid var(--borda); font-size: 13px; font-weight: 600; }
+  #tipos { position: fixed; inset: 0; z-index: 8; display: flex; flex-direction: column; justify-content: center; gap: 12px; padding: 24px; background: var(--fundo); }
+  #tipos h1 { margin: 0 0 8px; font-size: 24px; text-align: center; }
+  #tipos button { padding: 18px; border-radius: 14px; background: var(--painel); border: 1px solid var(--borda); font-size: 18px; font-weight: 700; text-align: left; }
+  #tipos button small { display: block; font-size: 13px; font-weight: 400; color: var(--fraco); }
+  #tipos button.auto { text-align: center; background: none; color: var(--fraco); font-size: 15px; }
+  #instalar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; padding: 10px 12px; border-radius: 12px; background: var(--painel); border: 1px solid var(--ouro); font-size: 13px; }
+  #instalar span { flex: 1; }
+  #instalar button { background: none; color: var(--fraco); font-size: 18px; padding: 4px 8px; }
+  #toast { position: fixed; left: 16px; right: 16px; top: 64px; z-index: 9; padding: 12px 14px; border-radius: 12px; background: var(--verm); color: #fff; font-weight: 600; text-align: center; }
+</style>
+</head>
+<body>
+<header><span id="ponto"></span><span id="fila">LoL Pick</span><span id="timer"></span><button id="tipoBtn">Tipo</button></header>
+<div id="toast" hidden></div>
+<div id="tipos" hidden>
+  <h1>Qual partida você vai jogar?</h1>
+  <button data-tipo="normal">Normal<small>Só escolher o campeão</small></button>
+  <button data-tipo="ranked">Ranqueada / Flex<small>Banir e depois escolher</small></button>
+  <button data-tipo="aram">ARAM<small>Seu campeão, opções e banco</small></button>
+  <button data-tipo="desordem">ARAM: Desordem<small>Seu campeão, opções e banco</small></button>
+  <button data-tipo="auto" class="auto">Deixar o app descobrir sozinho</button>
+</div>
+<main>
+  <div id="instalar" hidden><span>Para virar app: menu <b>⋮</b> do navegador → <b>Adicionar à tela inicial</b>.</span><button id="instalarX">✕</button></div>
+  <div id="parado" class="centro"></div>
+
+  <div id="pronto" hidden>
+    <div class="centro" style="padding-top:14vh"><b>Partida encontrada!</b><span id="prontoFila"></span></div>
+    <div style="margin-top:28px"><button id="aceitar" class="grande">ACEITAR</button></div>
+  </div>
+
+  <div id="cs" hidden>
+    <div id="aram" hidden>
+      <div id="meu"></div>
+      <button id="dado" hidden></button>
+      <div id="dicaAram" style="margin-top:12px;font-size:13px;color:var(--fraco)"></div>
+      <h2 id="tOpcoes">Suas opções</h2><div id="opcoes" class="grade"></div>
+      <h2 id="tBanco">Banco do time</h2><div id="banco" class="grade"></div>
+    </div>
+
+    <h2>Seu time</h2><div id="meuTime" class="time"></div>
+    <div id="bansMeus" class="bans"></div>
+    <div id="blocoInimigo"><h2>Adversários</h2><div id="inimigos" class="time"></div><div id="bansDeles" class="bans"></div></div>
+
+    <div id="draft" hidden>
+      <div id="aviso"></div>
+      <div id="escolha">
+        <div id="dica"></div>
+        <div id="sugestoes" class="tira"></div>
+        <input id="busca" type="search" placeholder="Digite o nome do campeão" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <div id="grade" class="grade"></div>
+      </div>
+    </div>
+  </div>
+</main>
+<footer hidden id="rodape"><div><button id="confirmar" class="grande"></button></div></footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const limpo = (t) => t.normalize('NFD').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+
+let K = new URLSearchParams(location.search).get('k') || '';
+try { if (K) localStorage.setItem('k', K); else K = localStorage.getItem('k') || ''; } catch {}
+const elo = document.createElement('link');
+elo.rel = 'manifest'; elo.href = '/manifest.webmanifest?k=' + encodeURIComponent(K);
+document.head.appendChild(elo);
+
+let S = { lol: false, phase: 'None' };
+let champs = [];          // ordenados por nome
+let porId = new Map();
+let sel = 0;              // campeao marcado na caixa
+let acaoId = null;
+let fimTimer = 0;
+let gradeSig = '';
+let toastT = 0;
+let tipo = null;          // escolhido ao abrir o app; null = ainda nao perguntou
+const TIPOS = { normal: 'Normal', ranked: 'Ranqueada / Flex', aram: 'ARAM', desordem: 'ARAM: Desordem', auto: 'Automático' };
+const modoDe = (cs) => (!tipo || tipo === 'auto' ? cs.mode : (tipo === 'aram' || tipo === 'desordem' ? 'aram' : 'draft'));
+
+function toast(msg) {
+  $('toast').textContent = msg; $('toast').hidden = false;
+  clearTimeout(toastT); toastT = setTimeout(() => { $('toast').hidden = true; }, 3500);
+}
+
+async function api(cmd, corpo) {
+  try {
+    const r = await fetch(`/api/${cmd}?k=${encodeURIComponent(K)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo || {}) });
+    const j = await r.json();
+    if (!j.ok) toast(j.erro || 'Não deu certo');
+    return j.ok;
+  } catch { toast('Sem conexão com o PC'); return false; }
+}
+
+async function carregarChamps() {
+  try {
+    const lista = await (await fetch('/api/champions?k=' + encodeURIComponent(K))).json();
+    if (!Array.isArray(lista)) return;
+    champs = lista.map((c) => ({ ...c, chave: limpo(c.name) })).sort((a, b) => a.name.localeCompare(b.name, 'pt'));
+    porId = new Map(champs.map((c) => [c.id, c]));
+    gradeSig = ''; render();
+  } catch {}
+}
+
+const nome = (id) => (porId.get(id) || { name: '' }).name;
+const foto = (id) => `<img src="/icon/${id}" alt="" loading="lazy">`;
+
+function jogador(p, inimigo) {
+  const id = p.champ || p.intent;
+  const cls = ['jog', inimigo ? 'inimigo' : '', p.me ? 'me' : '', p.locked ? 'locked' : '', !p.champ && p.intent ? 'intent' : ''].join(' ');
+  const quem = p.me ? 'Você' : (p.name || p.pos || '');
+  return `<div class="${cls}"><div class="foto">${id ? foto(id) : ''}</div>` +
+    `<small class="c">${esc(id ? nome(id) : '—')}</small><small>${esc(quem)}</small></div>`;
+}
+
+function botaoCh(id, extra) {
+  return `<button class="ch ${extra || ''}" data-id="${id}">${foto(id)}<span>${esc(nome(id))}</span></button>`;
+}
+
+function renderGrade(cs, alvo) {
+  const q = limpo($('busca').value);
+  const fora = new Set(cs.fora);
+  const pode = new Set(cs.pegaveis);
+  const sig = [q, alvo.id, alvo.type, sel, cs.fora.join(), cs.pegaveis.length, champs.length].join('|');
+  if (sig === gradeSig) return;
+  gradeSig = sig;
+  let lista = champs;
+  if (q) lista = [...champs.filter((c) => c.chave.startsWith(q)), ...champs.filter((c) => !c.chave.startsWith(q) && c.chave.includes(q))];
+  $('grade').innerHTML = lista.map((c) => {
+    const off = fora.has(c.id) || (alvo.type === 'pick' && pode.size && !pode.has(c.id));
+    return botaoCh(c.id, (off ? 'off ' : '') + (c.id === sel ? 'sel' : ''));
+  }).join('') || '<div style="color:var(--fraco)">Nenhum campeão com esse nome.</div>';
+}
+
+function renderDraft(cs) {
+  const alvo = cs.acao || cs.plano;
+  if ((alvo ? alvo.id : null) !== acaoId) { acaoId = alvo ? alvo.id : null; sel = alvo ? alvo.champ : 0; $('busca').value = ''; gradeSig = ''; }
+  const av = $('aviso');
+  av.className = '';
+  if (cs.acao && cs.acao.type === 'ban') { av.textContent = 'Sua vez de BANIR'; av.className = 'vezban'; }
+  else if (cs.acao) { av.textContent = 'Sua vez de ESCOLHER'; av.className = 'vez'; }
+  else if (cs.eu.locked) av.textContent = 'Travado: ' + nome(cs.eu.champ);
+  else if (cs.plano) av.textContent = 'Aguarde sua vez — já pode deixar marcado';
+  else av.textContent = 'Aguarde…';
+
+  $('escolha').hidden = !alvo;
+  const rod = $('rodape');
+  rod.hidden = !(cs.acao && sel);
+  if (!alvo) return;
+
+  const ehPick = alvo.type === 'pick';
+  const sug = ehPick ? cs.sugestao : { falta: [], champs: [] };
+  $('dica').hidden = !sug.champs.length;
+  $('sugestoes').hidden = !sug.champs.length;
+  $('dica').textContent = sug.falta.length ? 'Falta no time: ' + sug.falta.join(', ') : 'Seus mais jogados';
+  $('sugestoes').innerHTML = sug.champs.map((id) => `<button data-id="${id}" title="${esc(nome(id))}">${foto(id)}</button>`).join('');
+
+  renderGrade(cs, alvo);
+  if (!rod.hidden) {
+    const b = $('confirmar');
+    b.className = 'grande' + (ehPick ? '' : ' ban');
+    b.textContent = (ehPick ? 'CONFIRMAR ' : 'BANIR ') + nome(sel).toUpperCase();
+  }
+}
+
+function renderAram(cs) {
+  $('rodape').hidden = true;
+  const id = cs.eu.champ;
+  $('meu').innerHTML = (id ? foto(id) : '') + `<div><small>Seu campeão</small><b>${esc(id ? nome(id) : 'Sorteando…')}</b></div>`;
+  $('dado').hidden = !cs.rerolls;
+  $('dado').textContent = `Rolar o dado (${cs.rerolls})`;
+  const dica = new Set(cs.sugestao.champs);
+  $('dicaAram').textContent = cs.sugestao.falta.length && dica.size ? `Falta no time: ${cs.sugestao.falta.join(', ')} — os de borda azul resolvem` : '';
+  const lista = (ids) => ids.map((c) => botaoCh(c, dica.has(c) && cs.sugestao.falta.length ? 'dica' : '')).join('');
+  $('tOpcoes').hidden = $('opcoes').hidden = !cs.opcoes.length;
+  $('opcoes').innerHTML = lista(cs.opcoes);
+  $('tBanco').hidden = false;
+  $('banco').innerHTML = lista(cs.banco) || '<div style="color:var(--fraco);grid-column:1/-1">Banco vazio por enquanto.</div>';
+}
+
+function render() {
+  $('ponto').className = S.lol ? 'on' : '';
+  $('fila').textContent = (tipo && tipo !== 'auto' ? TIPOS[tipo] : S.fila) || 'LoL Pick';
+  $('tipoBtn').textContent = tipo ? 'Trocar tipo' : 'Tipo';
+  const emCS = S.phase === 'ChampSelect' && S.cs;
+  $('parado').hidden = S.phase === 'ReadyCheck' || !!emCS;
+  $('pronto').hidden = S.phase !== 'ReadyCheck';
+  $('cs').hidden = !emCS;
+  if (!emCS) { $('rodape').hidden = true; acaoId = null; sel = 0; }
+
+  if (!S.lol) $('parado').innerHTML = '<b>LoL fechado</b>Abra o cliente no PC.';
+  else if (S.phase === 'Matchmaking') $('parado').innerHTML = '<b>Na fila…</b>Aviso assim que achar partida.';
+  else if (S.phase === 'InProgress' || S.phase === 'GameStart') $('parado').innerHTML = '<b>Partida em andamento</b>Bom jogo.';
+  else $('parado').innerHTML = '<b>Aguardando</b>Entre numa fila no PC.';
+
+  if (S.phase === 'ReadyCheck') {
+    $('tipos').hidden = true; // a pergunta nao pode tampar o ACEITAR
+    $('prontoFila').textContent = S.fila || '';
+    $('aceitar').disabled = !!S.aceito;
+    $('aceitar').textContent = S.aceito ? 'ACEITO ✓' : 'ACEITAR';
+  }
+  if (!emCS) return;
+
+  const cs = S.cs;
+  const modo = modoDe(cs);
+  $('meuTime').innerHTML = cs.meuTime.map((p) => jogador(p, false)).join('');
+  const temInimigo = cs.inimigos.some((p) => p.champ || p.intent) || cs.bans.deles.length;
+  $('blocoInimigo').hidden = modo === 'aram' || !temInimigo;
+  $('inimigos').innerHTML = cs.inimigos.map((p) => jogador(p, true)).join('');
+  const bans = (ids, txt) => (ids.length ? txt + ids.map(foto).join('') : '');
+  $('bansMeus').innerHTML = bans(cs.bans.meus, 'Bans do seu time ');
+  $('bansDeles').innerHTML = bans(cs.bans.deles, 'Bans deles ');
+
+  $('aram').hidden = modo !== 'aram';
+  $('draft').hidden = modo !== 'draft';
+  if (modo === 'aram') renderAram(cs); else renderDraft(cs);
+}
+
+// tipo de partida: pergunta ao abrir e pelo botao do topo
+$('tipos').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-tipo]'); if (!b) return;
+  tipo = b.dataset.tipo; $('tipos').hidden = true; gradeSig = ''; render();
+});
+$('tipoBtn').addEventListener('click', () => { $('tipos').hidden = false; });
+
+// lembrete de instalar (some quando ja abriu pela tela inicial)
+try {
+  const instalado = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  $('instalar').hidden = instalado || localStorage.getItem('instalarVisto') === '1';
+} catch {}
+$('instalarX').addEventListener('click', () => { $('instalar').hidden = true; try { localStorage.setItem('instalarVisto', '1'); } catch {} });
+
+// toques
+function marcar(id) {
+  if (!S.cs) return;
+  sel = id; gradeSig = ''; render();
+  api('hover', { championId: id });
+}
+$('grade').addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); if (b) marcar(Number(b.dataset.id)); });
+$('sugestoes').addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); if (b) marcar(Number(b.dataset.id)); });
+$('busca').addEventListener('input', () => { if (S.cs) renderDraft(S.cs); });
+$('confirmar').addEventListener('click', async () => { $('confirmar').disabled = true; await api('lock', { championId: sel }); $('confirmar').disabled = false; });
+$('aceitar').addEventListener('click', () => api('accept'));
+$('dado').addEventListener('click', () => api('reroll'));
+for (const id of ['opcoes', 'banco']) {
+  $(id).addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); if (b) api('swap', { championId: Number(b.dataset.id) }); });
+}
+
+// relogio
+setInterval(() => {
+  const t = $('timer');
+  if (S.phase !== 'ChampSelect' || !fimTimer) { t.textContent = ''; return; }
+  const s = Math.max(0, Math.ceil((fimTimer - Date.now()) / 1000));
+  t.textContent = s; t.className = s <= 10 ? 'pouco' : '';
+}, 250);
+
+// ao vivo
+function ligar() {
+  const es = new EventSource('/events?k=' + encodeURIComponent(K));
+  es.onmessage = (e) => {
+    S = JSON.parse(e.data);
+    fimTimer = S.left ? Date.now() + S.left : 0;
+    if (S.lol && S.nChamps && S.nChamps !== champs.length) carregarChamps();
+    render();
+  };
+  es.onerror = () => { $('ponto').className = ''; };
+}
+if (!K) $('parado').innerHTML = '<b>Sem chave</b>Abra pelo link do aviso do ntfy.';
+else { render(); ligar(); $('tipos').hidden = false; }
+</script>
+</body>
+</html>
