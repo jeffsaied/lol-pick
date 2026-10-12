@@ -126,6 +126,8 @@ let carregandoPerfis = false;
 let confrontos = null; // confrontos.json ja em ids
 let aprimoramentos = new Map(); // id -> { nome, icone } no idioma do cliente
 const iconesAug = new Map(); // id -> { buf, tipo }
+let itensDoJogo = new Map(); // id -> { nome, icone } no idioma do cliente
+const iconesItem = new Map(); // id -> { buf, tipo }
 const nomes = new Map(); // summonerId -> nome
 const icones = new Map(); // id -> { buf, tipo }
 
@@ -139,6 +141,8 @@ async function carregarCampeoes() {
   carregarPerfis();
   const a = await lcu('GET', '/lol-game-data/assets/v1/cherry-augments.json');
   if (ok(a) && Array.isArray(a.json)) aprimoramentos = new Map(a.json.map((x) => [x.id, { nome: x.nameTRA || '', icone: x.augmentSmallIconPath || '' }]));
+  const it = await lcu('GET', '/lol-game-data/assets/v1/items.json');
+  if (ok(it) && Array.isArray(it.json)) itensDoJogo = new Map(it.json.map((x) => [x.id, { nome: x.name || '', icone: x.iconPath || '' }]));
 }
 
 // o do site (por rota) e o escrito a mao; qualquer um dos dois pode faltar
@@ -442,8 +446,12 @@ function paraOPainel() {
   let desordem = null;
   if (partida.modo === 'desordem' && partida.champ) {
     const a = opgg.aprimoramentos(partida.champ);
+    const it = opgg.itens(partida.champ);
+    const comNome = (ids) => ids.map((id) => ({ id, nome: (itensDoJogo.get(id) || {}).nome || '' }));
     desordem = {
       nome: nome(partida.champ), doCampeao: a.doCampeao,
+      // as linhas mais usadas de cada tabela: inicial e botas, uma; nucleo, tres
+      itens: it ? { inicial: comNome(it.inicial[0] || []), botas: comNome((it.botas[0] || []).concat(it.botas[1] || [])), nucleo: it.nucleo.slice(0, 3).map(comNome) } : null,
       lista: a.lista.map((x) => ({ id: x.id, tier: x.tier, nome: (aprimoramentos.get(x.id) || {}).nome || x.nome })).filter((x) => x.nome),
     };
   }
@@ -525,15 +533,16 @@ const servidor = http.createServer(async (req, res) => {
     return res.end(img.buf);
   }
 
-  const iconeAug = rota.match(/^\/aug\/(\d+)$/);
+  const iconeAug = rota.match(/^\/(aug|item)\/(\d+)$/);
   if (iconeAug) {
-    const id = Number(iconeAug[1]);
-    const a = aprimoramentos.get(id);
-    if (!iconesAug.has(id) && a && a.icone) {
+    const id = Number(iconeAug[2]);
+    const [dados, guardados] = iconeAug[1] === 'aug' ? [aprimoramentos, iconesAug] : [itensDoJogo, iconesItem];
+    const a = dados.get(id);
+    if (!guardados.has(id) && a && a.icone) {
       const r = await lcu('GET', a.icone, undefined, true);
-      if (ok(r)) iconesAug.set(id, { buf: r.buf, tipo: r.tipo || 'image/png' });
+      if (ok(r)) guardados.set(id, { buf: r.buf, tipo: r.tipo || 'image/png' });
     }
-    const img = iconesAug.get(id);
+    const img = guardados.get(id);
     if (!img) { res.writeHead(404); return res.end(); }
     res.writeHead(200, { 'Content-Type': img.tipo, 'Cache-Control': 'public, max-age=86400' });
     return res.end(img.buf);

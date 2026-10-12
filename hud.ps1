@@ -103,6 +103,12 @@ function Pedir($caminho, [switch]$Post) {
         <StackPanel x:Name="MelhoresLista"/>
       </StackPanel>
     </Border>
+    <Border x:Name="Itens" Visibility="Collapsed" BorderBrush="#26334D" BorderThickness="0,1,0,0" Margin="14,0,14,12" Padding="0,10,0,0">
+      <StackPanel>
+        <TextBlock x:Name="ItensTitulo" Foreground="#C8AA6E" FontSize="10" FontWeight="Bold" Margin="0,0,0,5"/>
+        <StackPanel x:Name="ItensLista"/>
+      </StackPanel>
+    </Border>
     <Border x:Name="Augs" Visibility="Collapsed" BorderBrush="#26334D" BorderThickness="0,1,0,0" Margin="14,0,14,12" Padding="0,10,0,0">
       <StackPanel>
         <TextBlock x:Name="AugsTitulo" Foreground="#C8AA6E" FontSize="10" FontWeight="Bold" Margin="0,0,0,5"/>
@@ -174,8 +180,25 @@ function Linha($figura, $nome, $sub, $tier) {
     return $g
 }
 
+# Uma fileira de itens: o rotulo e as figuras lado a lado (o nome aparece ao parar o mouse em cima).
+function Fileira($rotulo, $lista) {
+    $p = New-Object Windows.Controls.StackPanel
+    $p.Orientation = 'Horizontal'; $p.Margin = '0,3,0,3'
+    $t = New-Object Windows.Controls.TextBlock
+    $t.Text = $rotulo; $t.Width = 62; $t.Foreground = $Pincel.ConvertFromString('#A09B8C'); $t.FontSize = 11; $t.VerticalAlignment = 'Center'
+    [void]$p.Children.Add($t)
+    foreach ($i in @($lista)) {
+        $img = New-Object Windows.Controls.Image
+        $img.Width = 30; $img.Height = 30; $img.Margin = '0,0,5,0'; $img.ToolTip = $i.nome
+        try { $img.Source = New-Object Windows.Media.Imaging.BitmapImage([Uri]"$Base/item/$($i.id)") } catch {}
+        [void]$p.Children.Add($img)
+    }
+    return $p
+}
+
 # Nos modos ARAM: melhores campeoes entre as suas opcoes (na selecao) e melhores aprimoramentos (Desordem).
 $melhores = $win.FindName('Melhores'); $melhoresTitulo = $win.FindName('MelhoresTitulo'); $melhoresLista = $win.FindName('MelhoresLista')
+$itens = $win.FindName('Itens'); $itensTitulo = $win.FindName('ItensTitulo'); $itensLista = $win.FindName('ItensLista')
 $augs = $win.FindName('Augs'); $augsTitulo = $win.FindName('AugsTitulo'); $augsLista = $win.FindName('AugsLista')
 $assinaturaAram = ''
 function Mostrar-Aram($e) {
@@ -184,6 +207,16 @@ function Mostrar-Aram($e) {
     $script:assinaturaAram = $sig
     $melhoresLista.Children.Clear()
     $augsLista.Children.Clear()
+    $itensLista.Children.Clear()
+    $it = if ($e.desordem) { $e.desordem.itens } else { $null }
+    if ($it -and @($it.nucleo).Count -gt 0) {
+        $itensTitulo.Text = "ITENS MAIS USADOS  ·  $($e.desordem.nome)".ToUpper()
+        if (@($it.inicial).Count) { [void]$itensLista.Children.Add((Fileira 'Início' $it.inicial)) }
+        if (@($it.botas).Count) { [void]$itensLista.Children.Add((Fileira 'Botas' $it.botas)) }
+        $n = 0
+        foreach ($linha in @($it.nucleo)) { $n++; [void]$itensLista.Children.Add((Fileira "Build $n" $linha)) }
+        $itens.Visibility = 'Visible'
+    } else { $itens.Visibility = 'Collapsed' }
     $lista = @($e.melhores)
     if ($lista.Count -gt 0) {
         $melhoresTitulo.Text = "MELHORES CAMPEÕES  ·  $($e.modo)".ToUpper()

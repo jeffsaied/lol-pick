@@ -264,7 +264,8 @@ function Passo {
     try { $linhas = Ler-Imagem (Fotografar $o.X ($o.Y + $y1) $w ($y2 - $y1)) } catch { Anotar-Erro $_; Esconder; return }
     $cartas = @(Achar-Cartas $linhas @($d.itens))
     foreach ($c in $cartas) { $c.CY += $y1 }
-    $sig = ($cartas | ForEach-Object { "$($_.Item.chave)@$([int]($_.CX / 8)),$([int]($_.CY / 8))" }) -join '|'
+    # a posicao da janela entra na conta: se o jogo for arrastado, as cartas continuam no mesmo lugar dentro dele
+    $sig = "$($o.X),$($o.Y),$w,$h|" + (($cartas | ForEach-Object { "$($_.Item.chave)@$([int]($_.CX / 8)),$([int]($_.CY / 8))" }) -join '|')
     if ($sig -eq $script:assinatura) { return }
     $script:assinatura = $sig
     $win.Left = $o.X; $win.Top = $o.Y; $win.Width = $w; $win.Height = $h

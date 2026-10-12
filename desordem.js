@@ -65,6 +65,18 @@ function lerLista(html) {
 // pagina de um campeao -> ids dos aprimoramentos, do melhor para o pior
 const lerCampeao = (html) => [...new Set([...carga(html).matchAll(/"metaId":(\d+),"metaType":"aram-augment"/g)].map((m) => Number(m[1])))];
 
+// pagina de um campeao -> itens: { inicial, botas, nucleo }, cada um com as linhas da tabela (a mais usada primeiro)
+function lerItens(html) {
+  const s = carga(html);
+  const linhas = { starter_items: [], boots: [], core_items: [] };
+  let atual = null;
+  for (const m of s.matchAll(/\["\$","tr","([a-z_]+?)_\d+"|"metaType":"item","metaId":(\d+)/g)) {
+    if (m[1]) { atual = linhas[m[1]] ? [] : null; if (atual) linhas[m[1]].push(atual); } else if (atual) atual.push(Number(m[2]));
+  }
+  const cheias = (l) => l.filter((x) => x.length);
+  return { inicial: cheias(linhas.starter_items), botas: cheias(linhas.boots), nucleo: cheias(linhas.core_items) };
+}
+
 // baixa a lista do modo se a guardada tiver mais de um dia
 async function atualizarLista(modo) {
   const temLugar = dados.listas[modo] && Object.values(dados.listas[modo].champs).some((c) => c.lugar); // arquivo de versao antiga nao tinha
@@ -77,13 +89,14 @@ async function atualizarLista(modo) {
 
 // baixa os aprimoramentos do campeao se os guardados tiverem mais de tres dias
 async function atualizarCampeao(id) {
-  if (fresco(dados.porCampeao[id], 3 * DIA)) return;
+  if (fresco(dados.porCampeao[id], 3 * DIA) && dados.porCampeao[id].itens) return; // arquivo de versao antiga nao tinha os itens
   await atualizarLista('desordem');
   const c = dados.listas.desordem.champs[id];
   if (!c) return;
-  const ids = lerCampeao(await pagina(`aram-mayhem/${c.chave}/build`));
+  const html = await pagina(`aram-mayhem/${c.chave}/build`);
+  const ids = lerCampeao(html);
   if (!ids.length) throw new Error(`a pagina do op.gg mudou: nao achei os aprimoramentos de ${c.chave}`);
-  dados.porCampeao[id] = { em: new Date().toISOString(), ids };
+  dados.porCampeao[id] = { em: new Date().toISOString(), ids, itens: lerItens(html) };
   gravar();
 }
 
@@ -92,6 +105,9 @@ function tiers(modo) {
   const l = dados.listas[modo];
   return l ? new Map(Object.entries(l.champs).map(([id, c]) => [Number(id), c.tier])) : null;
 }
+
+// itens mais usados com o campeao na Desordem, ou null se a pagina dele ainda nao foi baixada
+const itens = (id) => (dados.porCampeao[id] && dados.porCampeao[id].itens) || null;
 
 // tier e lugar do campeao no modo, ou null
 const campeao = (modo, id) => (dados.listas[modo] && dados.listas[modo].champs[id]) || null;
@@ -113,4 +129,4 @@ function aprimoramentos(id, quantos = 10) {
   return { doCampeao: false, lista: gerais.slice(0, quantos).map(um) };
 }
 
-module.exports = { ARQUIVO, lerLista, lerCampeao, atualizarLista, atualizarCampeao, tiers, campeao, aprimoramentos, todosAprimoramentos };
+module.exports = { ARQUIVO, lerLista, lerCampeao, atualizarLista, atualizarCampeao, lerItens, tiers, campeao, itens, aprimoramentos, todosAprimoramentos };
