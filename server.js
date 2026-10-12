@@ -228,6 +228,7 @@ let pegaveis = { ids: [], em: 0 };
 let ultimoDump = 0;
 const clientes = new Set();
 let qrLido = false; // o celular ja leu o QR de ligar o ntfy
+let cartasVivo = { pid: 0, em: 0 }; // ultimo sinal de vida do cartas.ps1
 
 function montarSelecao(s, opcoes) {
   const eu = s.localPlayerCellId;
@@ -558,7 +559,11 @@ const servidor = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' });
     return res.end(fs.readFileSync(path.join(DIR, 'vendor', 'qrcode.js')));
   }
-  if (noPC && rota === '/api/cartas') return json(res, 200, cartasNaTela());
+  if (noPC && rota === '/api/cartas') {
+    const pid = Number(url.searchParams.get('pid'));
+    if (pid) cartasVivo = { pid, em: Date.now() };
+    return json(res, 200, cartasNaTela());
+  }
   if (noPC && rota === '/api/pc') {
     if (req.method === 'POST') {
       const acao = url.searchParams.get('acao');
@@ -641,10 +646,18 @@ servidor.listen(cfg.port, '0.0.0.0', () => {
   laco();
   // painel no canto da tela do PC (botao de aceitar sozinho) e as notas por cima das cartas
   if (!process.env.LOLPICK_SEM_HUD) {
-    for (const ps1 of ['hud.ps1', 'cartas.ps1']) {
-      require('child_process').spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', path.join(DIR, ps1), '-Porta', String(cfg.port)],
-        { windowsHide: true, stdio: 'ignore' }).unref(); // sem "detached": sem console o PowerShell fecha na hora
-    }
+    const abrir = (ps1) => require('child_process').spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', path.join(DIR, ps1), '-Porta', String(cfg.port)],
+      { windowsHide: true, stdio: 'ignore' }).unref(); // sem "detached": sem console o PowerShell fecha na hora
+    abrir('hud.ps1');
+    abrir('cartas.ps1');
+    // o cartas.ps1 da sinal de vida a cada 3 s; se sumir (travou ou caiu), fecha o que sobrou e abre outro
+    setInterval(() => {
+      if (!cartasVivo.em || Date.now() - cartasVivo.em < 20000) return;
+      try { process.kill(cartasVivo.pid); } catch {}
+      cartasVivo = { pid: 0, em: 0 };
+      console.log('cartas.ps1 parou de responder: reabrindo');
+      abrir('cartas.ps1');
+    }, 10000);
   }
   if (cfg.confrontosDoSite && !process.env.LOLPICK_SEM_SITE) {
     site.atualizarSePreciso(console.log).then((novo) => { if (novo && champs.size) carregarConfrontos(); })

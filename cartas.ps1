@@ -74,7 +74,7 @@ public static class Nomes {
 
 # ---------- leitor de texto do Windows ----------
 [void][Windows.Media.Ocr.OcrEngine, Windows.Foundation, ContentType = WindowsRuntime]
-[void][Windows.Graphics.Imaging.BitmapDecoder, Windows.Graphics, ContentType = WindowsRuntime]
+[void][Windows.Graphics.Imaging.SoftwareBitmap, Windows.Graphics, ContentType = WindowsRuntime]
 $Leitor = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
 if (-not $Leitor) { return } # Windows sem leitor de texto instalado: nao ha o que fazer
 $asTask = [System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
@@ -82,7 +82,7 @@ $asTask = [System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
 } | Select-Object -First 1
 function Esperar($operacao, [Type]$tipo) {
     $t = $asTask.MakeGenericMethod($tipo).Invoke($null, @($operacao))
-    [void]$t.Wait(5000)
+    if (-not $t.Wait(4000)) { throw 'o leitor de texto do Windows nao respondeu' } # sem isto, pedir o resultado travaria o programa para sempre
     return $t.Result
 }
 # Fotografa um pedaco da tela (sem as janelas transparentes, entao a propria nota nao atrapalha).
@@ -94,14 +94,15 @@ function Fotografar($x, $y, $w, $h) {
 }
 # Devolve as palavras lidas na imagem, linha por linha, com a posicao de cada uma.
 function Ler-Imagem($bmp) {
-    $ms = New-Object IO.MemoryStream
-    $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Bmp); $bmp.Dispose()
-    $ms.Position = 0
-    $fluxo = [System.IO.WindowsRuntimeStreamExtensions]::AsRandomAccessStream($ms)
-    $dec = Esperar ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($fluxo)) ([Windows.Graphics.Imaging.BitmapDecoder])
-    $sb = Esperar ($dec.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
-    $res = Esperar ($Leitor.RecognizeAsync($sb)) ([Windows.Media.Ocr.OcrResult])
-    $ms.Dispose()
+    # os pontos da imagem vao direto para o leitor: passar por arquivo em memoria tinha mais etapas onde travar
+    $w = $bmp.Width; $h = $bmp.Height
+    $pontos = $bmp.LockBits((New-Object System.Drawing.Rectangle 0, 0, $w, $h), [System.Drawing.Imaging.ImageLockMode]::ReadOnly, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $bytes = New-Object byte[] ($pontos.Stride * $h)
+    [Runtime.InteropServices.Marshal]::Copy($pontos.Scan0, $bytes, 0, $bytes.Length)
+    $bmp.UnlockBits($pontos); $bmp.Dispose()
+    $buf = [System.Runtime.InteropServices.WindowsRuntime.WindowsRuntimeBufferExtensions]::AsBuffer($bytes)
+    $sb = [Windows.Graphics.Imaging.SoftwareBitmap]::CreateCopyFromBuffer($buf, [Windows.Graphics.Imaging.BitmapPixelFormat]::Bgra8, $w, $h, [Windows.Graphics.Imaging.BitmapAlphaMode]::Ignore)
+    try { $res = Esperar ($Leitor.RecognizeAsync($sb)) ([Windows.Media.Ocr.OcrResult]) } finally { $sb.Dispose() }
     $linhas = @()
     foreach ($l in $res.Lines) {
         $palavras = @($l.Words | ForEach-Object {
@@ -226,8 +227,12 @@ function Desenhar($cartas, $forma, $altJanela) {
 # ---------- laco ----------
 $Base = "http://127.0.0.1:$Porta"
 function Pedir($caminho) {
-    try { $w = New-Object Net.WebClient; $w.Proxy = $null; $w.Encoding = [Text.Encoding]::UTF8; return ($w.DownloadString($Base + $caminho) | ConvertFrom-Json) }
-    catch { return $null }
+    try {
+        $r = [Net.WebRequest]::Create($Base + $caminho); $r.Proxy = $null; $r.Timeout = 2000; $r.ReadWriteTimeout = 2000
+        $resp = $r.GetResponse()
+        try { $txt = (New-Object IO.StreamReader($resp.GetResponseStream(), [Text.Encoding]::UTF8)).ReadToEnd() } finally { $resp.Close() }
+        return ($txt | ConvertFrom-Json)
+    } catch { return $null }
 }
 $falhas = 0
 $dados = $null
@@ -253,7 +258,7 @@ function Anotar-Erro($e) {
 function Passo {
     if (-not $Janela -and ((Get-Date) - $script:ultimoPedido).TotalSeconds -ge 3) {
         $script:ultimoPedido = Get-Date
-        $d = Pedir '/api/cartas'
+        $d = Pedir "/api/cartas?pid=$PID" # o pedido tambem serve de sinal de vida: se parar de chegar, o server.js reabre este script
         if (-not $d) { $script:falhas++; if ($script:falhas -ge 3) { $win.Close() }; return }
         $script:falhas = 0
         $script:dados = $d
