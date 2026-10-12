@@ -3,3 +3,5 @@ config.json
 # o que o cliente do LoL mandou (tem nome de jogador)
 debug/
 node_modules/
+# atalho criado pelo iniciar.bat (guarda o caminho da pasta de cada pessoa)
+*.lnk

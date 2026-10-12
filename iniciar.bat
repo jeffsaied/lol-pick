@@ -26,6 +26,9 @@ exit /b
 
 :temnode
 
+rem Cria o atalho "Pick Automatico" com o icone, nesta pasta e na Area de Trabalho. O [char]225 e o "a" com acento.
+powershell -NoProfile -Command "$n='Pick Autom'+[char]225+'tico.lnk'; foreach ($p in '%~dp0', [Environment]::GetFolderPath('Desktop')) { $s=(New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $p $n)); $s.TargetPath='%~dp0iniciar.bat'; $s.WorkingDirectory='%~dp0'; $s.IconLocation='%~dp0icone.ico'; $s.Save() }" >nul 2>&1
+
 rem Libera a porta para o celular alcancar o PC. So na primeira vez; o Windows pede permissao.
 netsh advfirewall firewall show rule name=lol-pick-8787 >nul 2>&1
 if errorlevel 1 (
