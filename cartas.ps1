@@ -69,6 +69,17 @@ public static class Nomes {
     }
     return melhor;
   }
+  // nome comprido quebra em duas linhas na carta: o texto lido e so o comeco. Vale se um unico nome comeca assim.
+  public static int Comeco(string texto, string[] chaves) {
+    int achou = -1;
+    for (int k = 0; k < chaves.Length; k++) {
+      if (chaves[k].Length > texto.Length && chaves[k].StartsWith(texto, StringComparison.Ordinal)) {
+        if (achou >= 0) return -1;
+        achou = k;
+      }
+    }
+    return achou;
+  }
 }
 '@
 
@@ -124,9 +135,14 @@ function Limpo($t) {
 function Achar-Item($texto, $itens) {
     if ($script:porNome.ContainsKey($texto)) { return $script:porNome[$texto] }
     $tolera = [Math]::Floor($texto.Length / 6)
-    if ($tolera -lt 1) { return $null }
-    $k = [Nomes]::Achar($texto, $script:chaves, $tolera)
-    if ($k -ge 0) { return $itens[$k] }
+    if ($tolera -ge 1) {
+        $k = [Nomes]::Achar($texto, $script:chaves, $tolera)
+        if ($k -ge 0) { return $itens[$k] }
+    }
+    if ($texto.Length -ge 10) {
+        $k = [Nomes]::Comeco($texto, $script:chaves)
+        if ($k -ge 0) { return $itens[$k] }
+    }
     return $null
 }
 # Cartas vizinhas podem vir na mesma linha de texto: procura cada nome como sequencia de 1 a 5 palavras seguidas.
@@ -155,6 +171,18 @@ function Achar-Cartas($linhas, $itens) {
     return @($achadas | Sort-Object CY | Group-Object { $_.Item.chave } | ForEach-Object { $_.Group[0] } | Sort-Object CX)
 }
 
+# Descarta o que nao pode ser carta: nome fora da fileira dos outros, dois nomes na mesma carta, mais de tres.
+function Arrumar-Cartas($cartas, $forma, $altJanela) {
+    if (-not $cartas.Count) { return @() }
+    $ys = @($cartas | ForEach-Object { $_.CY } | Sort-Object)
+    $meio = $ys[[Math]::Floor($ys.Count / 2)]
+    $w0 = $forma.Largura * $altJanela
+    $fileira = @($cartas | Where-Object { [Math]::Abs($_.CY - $meio) -le 0.04 * $altJanela } | Sort-Object CX)
+    $saida = @()
+    foreach ($c in $fileira) { if (-not $saida.Count -or ($c.CX - $saida[-1].CX) -gt 0.5 * $w0) { $saida += $c } }
+    return @($saida | Select-Object -First 3)
+}
+
 # ---------- onde as cartas ficam ----------
 # Medidas tiradas de fotos de verdade, em fracao da largura da carta: o nome serve de ancora.
 #   faixa: pedaco da janela onde os nomes aparecem (de cima para baixo). Tem que ser estreita: com a janela
@@ -164,7 +192,7 @@ function Achar-Cartas($linhas, $itens) {
 #   topoJ/alturaJ: o mesmo em fracao da altura da janela, para as cartas do jogo, que mudam de largura mas nao de altura
 $Forma = @{
     campeoes       = @{ Processo = 'LeagueClientUx';    Faixa = 0.52, 0.67; Largura = 0.258; Passo = 1.161; Topo = 1.333; Altura = 1.602 }
-    aprimoramentos = @{ Processo = 'League of Legends'; Faixa = 0.34, 0.49; Largura = 0.31; Passo = 1.149; TopoJ = 0.232; AlturaJ = 0.492 }
+    aprimoramentos = @{ Processo = 'League of Legends'; Faixa = 0.365, 0.445; Largura = 0.31; Passo = 1.149; TopoJ = 0.232; AlturaJ = 0.492 }
 }
 
 # ---------- janela transparente por cima ----------
@@ -193,7 +221,14 @@ function Desenhar($cartas, $forma, $altJanela) {
     $quadro.Children.Clear()
     if (-not $cartas.Count) { return }
     $largura = $forma.Largura * $altJanela
-    if ($cartas.Count -ge 2) { $largura = ($cartas[1].CX - $cartas[0].CX) / $forma.Passo } # duas cartas dao a medida exata
+    if ($cartas.Count -ge 2) {
+        # a distancia entre duas cartas da a medida exata, mas elas podem nao ser vizinhas (a do meio nao foi lida)
+        $dist = $cartas[1].CX - $cartas[0].CX
+        $saltos = [Math]::Max(1, [Math]::Round($dist / ($largura * $forma.Passo)))
+        $medida = $dist / ($saltos * $forma.Passo)
+        if ([Math]::Abs($medida - $largura) -le 0.25 * $largura) { $largura = $medida } # medida absurda: fica a largura padrao
+    }
+    $baseY = ($cartas | ForEach-Object { $_.CY } | Measure-Object -Maximum).Maximum # nome em duas linhas comeca mais acima: vale o mais baixo
     $melhor = ($cartas | Sort-Object { [double]$_.Item.ordem } | Select-Object -First 1).Item.chave
     $menor = ($cartas | ForEach-Object { [double]$_.Item.ordem } | Measure-Object -Minimum).Minimum
     $empate = @($cartas | Where-Object { [double]$_.Item.ordem -eq $menor }).Count -gt 1
@@ -201,8 +236,8 @@ function Desenhar($cartas, $forma, $altJanela) {
         $eMelhor = (-not $empate) -and $cartas.Count -ge 2 -and $c.Item.chave -eq $melhor
         $cor = if ($eMelhor) { '#3CCF7E' } else { Cor-Tier $c.Item.tier }
         $x = $c.CX - $largura / 2
-        if ($forma.TopoJ) { $y = $c.CY - $forma.TopoJ * $altJanela; $altura = $forma.AlturaJ * $altJanela }
-        else { $y = $c.CY - $forma.Topo * $largura; $altura = $forma.Altura * $largura }
+        if ($forma.TopoJ) { $y = $baseY - $forma.TopoJ * $altJanela; $altura = $forma.AlturaJ * $altJanela }
+        else { $y = $baseY - $forma.Topo * $largura; $altura = $forma.Altura * $largura }
         $borda = New-Object Windows.Shapes.Rectangle
         $borda.Width = $largura; $borda.Height = $altura
         $borda.RadiusX = 14; $borda.RadiusY = 14
@@ -282,6 +317,7 @@ function Passo {
     # o painel pode ter sido arrastado para o meio: nome lido dentro dele nao e carta
     $p = [Tela]::Painel()
     $cartas = @($cartas | Where-Object { $x = $_.CX + $o.X; $y = $_.CY + $o.Y; -not ($x -ge $p[0] -and $x -le $p[2] -and $y -ge $p[1] -and $y -le $p[3]) })
+    $cartas = @(Arrumar-Cartas $cartas $forma $h)
     # a posicao da janela entra na conta: se o jogo for arrastado, as cartas continuam no mesmo lugar dentro dele
     $sig = "$($o.X),$($o.Y),$w,$h|" + (($cartas | ForEach-Object { "$($_.Item.chave)@$([int]($_.CX / 8)),$([int]($_.CY / 8))" }) -join '|')
     if ($sig -eq $script:assinatura) { return }
@@ -301,7 +337,7 @@ if ($Foto) {
     $faixa = $img.Clone((New-Object System.Drawing.Rectangle $x1, $y1, ($x2 - $x1), ($y2 - $y1)), $img.PixelFormat)
     $t = [Diagnostics.Stopwatch]::StartNew()
     $linhas = Ler-Imagem $faixa
-    $cartas = @(Achar-Cartas $linhas $lista)
+    $cartas = @(Arrumar-Cartas @(Achar-Cartas $linhas $lista) $forma $img.Height)
     "leitura em $($t.ElapsedMilliseconds) ms; linhas lidas: $($linhas.Count); cartas: $($cartas.Count); painel em $([Tela]::Painel() -join ',')"
     foreach ($c in $cartas) { "  $($c.Item.nome) -> $($c.Item.rotulo) | centro $([int]($c.CX + $x1)),$([int]($c.CY + $y1))" }
     $mutex.ReleaseMutex()
