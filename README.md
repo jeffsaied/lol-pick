@@ -6,7 +6,8 @@ Um programinha fica rodando no PC onde o LoL está aberto. Quando a fila acha pa
 
 ## O que faz
 
-- **Aviso de partida encontrada** pelo [ntfy](https://ntfy.sh), com botão de aceitar.
+- **Aceita a partida sozinho** quando a fila encontra. Um painel no canto da tela do PC tem o botão: verde **ON** aceita sozinho, um clique vira vermelho **OFF** e você volta a aceitar pelo celular.
+- **Aviso de partida encontrada** pelo [ntfy](https://ntfy.sh), com botão de aceitar quando o aceitar sozinho está desligado.
 - **Normal:** caixa de busca com a foto dos campeões, em ordem alfabética, filtrando a cada letra.
 - **Ranqueada / Flex:** a mesma caixa para banir e depois para escolher. Campeão banido ou já pego fica apagado.
 - **ARAM / ARAM: Desordem:** mostra o campeão que veio para você, as opções e o banco do time; cada toque troca na hora.
@@ -48,6 +49,15 @@ Se quiser ensinar confrontos seus, que valem em qualquer rota e somam aos do sit
 ```
 
 Com isso, quando o adversário pegar Yasuo, Malphite e Renekton sobem na dica e Lux desce; e quando um amigo pegar Yasuo, Malphite e Diana sobem. Vale a partir da próxima vez que o programa ligar.
+
+## O painel do PC
+
+Ao ligar, aparece um painel pequeno no canto da tela, que fica por cima do jogo e vira uma bolinha quando o mouse sai de cima.
+
+- Botão redondo: liga e desliga o aceitar sozinho.
+- Arraste pelo fundo para mudar de lugar.
+- **?** mostra os atalhos para abrir a seleção de campeões no próprio PC e os QR codes do celular.
+- **✕** desliga o programa inteiro (o mesmo que o `parar.bat`).
 
 ## Sua chave
 

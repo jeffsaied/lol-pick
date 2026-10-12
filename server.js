@@ -22,6 +22,7 @@ function loadConfig() {
     topic: 'lolpick-' + crypto.randomBytes(5).toString('hex'),
     lockfile: 'C:\\Riot Games\\League of Legends\\lockfile',
     confrontosDoSite: true, // baixa os confrontos do counterstats.net a cada 14 dias
+    aceitarSozinho: true, // o botao ON/OFF do painel do PC
     configurado: false,
   };
   let cfg = {};
@@ -35,11 +36,11 @@ function loadConfig() {
 }
 const cfg = loadConfig();
 
-function marcarConfigurado() {
-  cfg.configurado = true;
+function salvarConfig(mudou) {
+  Object.assign(cfg, mudou);
   try {
     const salvo = JSON.parse(fs.readFileSync(CFG_FILE, 'utf8'));
-    fs.writeFileSync(CFG_FILE, JSON.stringify({ ...salvo, configurado: true }, null, 2));
+    fs.writeFileSync(CFG_FILE, JSON.stringify({ ...salvo, ...mudou }, null, 2));
   } catch {}
 }
 
@@ -299,10 +300,13 @@ async function ciclo() {
   }
   if (phase !== faseAnterior) {
     if (phase === 'ReadyCheck') {
-      avisar('Partida encontrada!', fila.label || 'Toque para aceitar', {
-        priority: 5, tags: ['crossed_swords'],
-        actions: [{ action: 'http', label: 'Aceitar', url: `${BASE}/api/accept?k=${cfg.key}`, method: 'POST' }],
-      });
+      if (cfg.aceitarSozinho) avisar('Partida encontrada e aceita', fila.label || 'Aceita sozinho pelo PC', { priority: 5, tags: ['crossed_swords'] });
+      else {
+        avisar('Partida encontrada!', fila.label || 'Toque para aceitar', {
+          priority: 5, tags: ['crossed_swords'],
+          actions: [{ action: 'http', label: 'Aceitar', url: `${BASE}/api/accept?k=${cfg.key}`, method: 'POST' }],
+        });
+      }
     }
     if (phase === 'ChampSelect') {
       pegaveis = { ids: [], em: 0 };
@@ -318,6 +322,7 @@ async function ciclo() {
   if (phase === 'ReadyCheck') {
     const r = await lcu('GET', '/lol-matchmaking/v1/ready-check');
     novo.aceito = !!(ok(r) && r.json && r.json.playerResponse === 'Accepted');
+    if (cfg.aceitarSozinho && ok(r) && r.json && r.json.playerResponse === 'None') novo.aceito = (await comandos.accept()).ok;
   }
 
   if (phase === 'ChampSelect') {
@@ -451,7 +456,8 @@ const servidor = http.createServer(async (req, res) => {
     if (req.method === 'POST') {
       const acao = url.searchParams.get('acao');
       if (acao === 'teste') avisar('Teste do Pick Automático', 'Se você está lendo isto, o aviso funciona.', { priority: 4, tags: ['bell'] });
-      if (acao === 'concluir') marcarConfigurado();
+      if (acao === 'concluir') salvarConfig({ configurado: true });
+      if (acao === 'auto') salvarConfig({ aceitarSozinho: url.searchParams.get('ligado') === '1' }); // botao do painel (hud.ps1)
       if (acao === 'desligar') setTimeout(() => process.exit(0), 200); // pedido do parar.bat
       return json(res, 200, { ok: true });
     }
@@ -459,6 +465,9 @@ const servidor = http.createServer(async (req, res) => {
       link: LINK, topic: cfg.topic, ntfyHost: new URL(cfg.ntfyServer).host,
       celulares: [...clientes].filter((c) => c.deFora).length,
       vincular: `${BASE}/vincular?k=${cfg.key}`, lido: qrLido,
+      // para o painel do PC (hud.ps1)
+      aceitarSozinho: !!cfg.aceitarSozinho, lol: !!estado.lol, phase: estado.phase, fila: estado.fila || '', aceito: !!estado.aceito,
+      pagina: `http://localhost:${cfg.port}/?k=${cfg.key}`,
     });
   }
 
@@ -521,6 +530,11 @@ servidor.listen(cfg.port, '0.0.0.0', () => {
     require('child_process').exec(`start "" "http://localhost:${cfg.port}/pc"`);
   }
   laco();
+  // painel no canto da tela do PC, com o botao de aceitar sozinho
+  if (!process.env.LOLPICK_SEM_HUD) {
+    require('child_process').spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', path.join(DIR, 'hud.ps1'), '-Porta', String(cfg.port)],
+      { windowsHide: true, stdio: 'ignore' }).unref(); // sem "detached": sem console o PowerShell fecha na hora
+  }
   if (cfg.confrontosDoSite && !process.env.LOLPICK_SEM_SITE) {
     site.atualizarSePreciso(console.log).then((novo) => { if (novo && champs.size) carregarConfrontos(); })
       .catch((e) => deuErro('download dos confrontos', e.message));

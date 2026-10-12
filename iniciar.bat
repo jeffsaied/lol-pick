@@ -62,7 +62,7 @@ exit /b 1
 :ligou
 echo.
 echo Pick Automatico ligado: e ele que liga o seu PC ao celular.
-echo Fica rodando escondido, sem janela. Para desligar, clique em parar.bat.
+echo Fica rodando escondido, so com o painel no canto da tela. Para desligar, clique no X do painel ou em parar.bat.
 
 :fechar
 echo Esta janela fecha sozinha em 5 segundos.
