@@ -45,4 +45,6 @@ Na primeira vez que liga, o programa cria o arquivo `config.json` com uma chave 
 
 Os QR codes usam o [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) de Kazuhiko Arase (licença MIT), em `vendor/qrcode.js`.
 
+O ícone do app é a arte oficial da Anivia, da Riot Games.
+
 Este projeto não é endossado pela Riot Games e não reflete as opiniões da Riot Games nem de ninguém envolvido oficialmente em produzir ou gerenciar o League of Legends.
