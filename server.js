@@ -181,6 +181,29 @@ function avisar(titulo, mensagem, extra) {
   }).catch((e) => console.log('ntfy falhou:', e.message));
 }
 
+// ---------- versao ----------
+const REPO = 'https://github.com/jeffsaied/pick-automatico';
+const VERSAO_URL = process.env.LOLPICK_VERSAO_URL || 'https://raw.githubusercontent.com/jeffsaied/pick-automatico/main/versao.txt';
+let VERSAO = 0;
+try { VERSAO = Number(fs.readFileSync(path.join(DIR, 'versao.txt'), 'utf8')) || 0; } catch {}
+let versaoNova = 0; // maior que zero: o GitHub tem versao mais nova que esta
+let ultimaChecagem = 0;
+
+// todo erro passa por aqui: se ja saiu versao mais nova, o conserto deve estar nela, entao avisa para atualizar
+async function deuErro(onde, msg) {
+  console.log(`erro em ${onde}: ${msg}`);
+  if (versaoNova || Date.now() - ultimaChecagem < 3600000) return;
+  ultimaChecagem = Date.now();
+  try {
+    const r = await fetch(VERSAO_URL, { signal: AbortSignal.timeout(10000) });
+    const n = r.ok ? Number((await r.text()).trim()) : 0;
+    if (!(n > VERSAO)) return;
+    versaoNova = n;
+    console.log(`ha versao nova (${n}); esta e a ${VERSAO}. Baixe em ${REPO}`);
+    avisar('Atualize o Pick Automático', `Deu erro (${onde}) e já saiu uma versão mais nova. Baixe no PC.`, { priority: 4, tags: ['warning'], click: REPO });
+  } catch {}
+}
+
 // ---------- estado ----------
 let estado = { lol: false, phase: 'None' };
 let assinatura = '';
@@ -248,6 +271,7 @@ function montarSelecao(s, opcoes) {
 }
 
 function publicar(novo, restante) {
+  if (versaoNova) novo.atualizar = REPO;
   estado = novo;
   const sig = JSON.stringify(novo);
   if (sig === assinatura) return;
@@ -330,7 +354,7 @@ async function ciclo() {
 
 async function laco() {
   let espera = 2000;
-  try { espera = await ciclo(); } catch (e) { console.log('erro no ciclo:', e.message); }
+  try { espera = await ciclo(); } catch (e) { deuErro('leitura do LoL', e.message); }
   setTimeout(laco, espera);
 }
 
@@ -498,6 +522,7 @@ servidor.listen(cfg.port, '0.0.0.0', () => {
   }
   laco();
   if (cfg.confrontosDoSite && !process.env.LOLPICK_SEM_SITE) {
-    site.atualizarSePreciso(console.log).then((novo) => { if (novo && champs.size) carregarConfrontos(); });
+    site.atualizarSePreciso(console.log).then((novo) => { if (novo && champs.size) carregarConfrontos(); })
+      .catch((e) => deuErro('download dos confrontos', e.message));
   }
 });

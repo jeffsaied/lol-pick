@@ -53,6 +53,10 @@ Com isso, quando o adversário pegar Yasuo, Malphite e Renekton sobem na dica e 
 
 Na primeira vez que liga, o programa cria o arquivo `config.json` com uma chave e um tópico do ntfy sorteados só para você. Sem a chave ninguém comanda a sua seleção, e sem o tópico ninguém recebe os seus avisos. Não compartilhe esse arquivo nem o link da página. Para trocar tudo, apague o `config.json` e ligue de novo.
 
+## Quando dá erro
+
+Se alguma coisa falhar (o site dos confrontos mudou, o LoL passou a responder diferente), o programa confere no GitHub se já saiu uma versão mais nova. Se saiu, você recebe um aviso no ntfy e uma faixa na página pedindo para baixar de novo. Se não saiu, ele segue com o que tem.
+
 ## Limites conhecidos
 
 - Só funciona com o celular na mesma rede do PC.

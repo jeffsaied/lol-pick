@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const SITE = 'https://www.counterstats.net/league-of-legends/';
+const SITE = process.env.LOLPICK_SITE || 'https://www.counterstats.net/league-of-legends/';
 const ARQUIVO = path.join(__dirname, 'confrontos-site.json');
 const VALIDADE = 14 * 24 * 3600 * 1000;
 const ROTA = { top: 'top', jungle: 'jungle', middle: 'middle', bottom: 'bottom', support: 'utility' }; // do site -> do LoL
@@ -63,10 +63,11 @@ async function atualizar(diz = () => {}) {
   diz(`confrontos: ${Object.keys(tabela).length} campeoes gravados (patch ${patch}), ${falhas} falhas`);
 }
 
-// devolve true quando gravou um arquivo novo
+// devolve true quando gravou um arquivo novo; se o site falhar, o erro sobe e o arquivo anterior fica
 async function atualizarSePreciso(diz = () => {}) {
   if (!precisa()) return false;
-  try { await atualizar(diz); return true; } catch (e) { diz('confrontos: ' + e.message); return false; }
+  await atualizar(diz);
+  return true;
 }
 
 module.exports = { ARQUIVO, lerPagina, atualizar, atualizarSePreciso };

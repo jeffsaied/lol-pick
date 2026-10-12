@@ -77,6 +77,8 @@
   #tipos button.auto { text-align: center; background: none; color: var(--fraco); font-size: 15px; }
   #instalar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; padding: 10px 12px; border-radius: 12px; background: var(--painel); border: 1px solid var(--ouro); font-size: 13px; }
   #instalar span { flex: 1; }
+  #atualizar { margin-bottom: 12px; padding: 10px 12px; border-radius: 12px; background: var(--painel); border: 1px solid var(--verm); font-size: 13px; }
+  #atualizar a { color: var(--ouro); }
   #instalar button { background: none; color: var(--fraco); font-size: 18px; padding: 4px 8px; }
   #toast { position: fixed; left: 16px; right: 16px; top: 64px; z-index: 9; padding: 12px 14px; border-radius: 12px; background: var(--verm); color: #fff; font-weight: 600; text-align: center; }
 </style>
@@ -94,6 +96,7 @@
 </div>
 <main>
   <div id="instalar" hidden><span>Para virar app: menu <b>⋮</b> do navegador → <b>Adicionar à tela inicial</b>.</span><button id="instalarX">✕</button></div>
+  <div id="atualizar" hidden>Deu um erro e já saiu uma versão mais nova do Pick Automático. Baixe de novo no PC: <a id="atualizarLink" target="_blank" rel="noopener"></a></div>
   <div id="parado" class="centro"></div>
 
   <div id="pronto" hidden>
@@ -265,6 +268,8 @@ function render() {
   $('ponto').className = S.lol ? 'on' : '';
   $('fila').textContent = (tipo && tipo !== 'auto' ? TIPOS[tipo] : S.fila) || 'Pick Automático';
   $('tipoBtn').textContent = tipo ? 'Trocar tipo' : 'Tipo';
+  $('atualizar').hidden = !S.atualizar;
+  if (S.atualizar) { $('atualizarLink').href = S.atualizar; $('atualizarLink').textContent = S.atualizar.replace('https://', ''); }
   const emCS = S.phase === 'ChampSelect' && S.cs;
   $('parado').hidden = S.phase === 'ReadyCheck' || !!emCS;
   $('pronto').hidden = S.phase !== 'ReadyCheck';
