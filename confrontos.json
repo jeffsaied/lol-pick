@@ -1,0 +1,8 @@
+{
+  "_como usar": "Troque o exemplo pelos seus confrontos. Os nomes são os do jogo (sem se preocupar com acento, espaço ou maiúscula).",
+  "_exemplo": {
+    "perdePara": ["campeões que levam vantagem sobre ele"],
+    "ganhaDe": ["campeões que sofrem contra ele"],
+    "combinaCom": ["campeões que jogam bem no mesmo time que ele"]
+  }
+}

@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const dica = require('./sugestao');
 
 const DIR = __dirname;
 const CFG_FILE = path.join(DIR, 'config.json');
@@ -112,20 +113,41 @@ const FILAS = {
   420: 'Ranqueada Solo/Duo', 440: 'Ranqueada Flex', 450: 'ARAM', 2400: 'ARAM: Desordem', 900: 'URF',
 };
 const POS = { top: 'Topo', jungle: 'Selva', middle: 'Meio', bottom: 'Atirador', utility: 'Suporte' };
-const PRECISA = ['tank', 'mage', 'marksman', 'support'];
-const PAPEL = { tank: 'tanque', mage: 'dano mágico', marksman: 'atirador', support: 'suporte' };
 
-let champs = new Map(); // id -> { id, name, roles }
+let champs = new Map(); // id -> { id, name, alias, roles }
 let maestria = new Map(); // id -> pontos
+const perfis = new Map(); // id -> perfil de jogo (sugestao.js); enche aos poucos, em segundo plano
+let carregandoPerfis = false;
+let confrontos = null; // confrontos.json ja em ids
 const nomes = new Map(); // summonerId -> nome
 const icones = new Map(); // id -> { buf, tipo }
 
 async function carregarCampeoes() {
   const r = await lcu('GET', '/lol-game-data/assets/v1/champion-summary.json');
   if (!ok(r) || !Array.isArray(r.json)) return;
-  champs = new Map(r.json.filter((c) => c.id > 0).map((c) => [c.id, { id: c.id, name: c.name, roles: c.roles || [] }]));
+  champs = new Map(r.json.filter((c) => c.id > 0).map((c) => [c.id, { id: c.id, name: c.name, alias: c.alias || '', roles: c.roles || [] }]));
   const m = await lcu('GET', '/lol-champion-mastery/v1/local-player/champion-mastery');
   if (ok(m) && Array.isArray(m.json)) maestria = new Map(m.json.map((x) => [x.championId, x.championPoints || 0]));
+  let tabela = {};
+  try { tabela = JSON.parse(fs.readFileSync(path.join(DIR, 'confrontos.json'), 'utf8')); } catch {}
+  confrontos = dica.lerConfrontos(tabela, champs);
+  if (confrontos.semId.length) console.log('confrontos.json: nome que nao e campeao:', confrontos.semId.join(', '));
+  carregarPerfis();
+}
+
+// um pedido por campeao; a dica funciona sem isso (so por papel e maestria) e melhora quando chega
+async function carregarPerfis() {
+  if (carregandoPerfis) return;
+  carregandoPerfis = true;
+  const faltam = [...champs.keys()].filter((id) => !perfis.has(id));
+  await Promise.all(Array.from({ length: 6 }, async () => {
+    while (faltam.length) {
+      const id = faltam.pop();
+      const r = await lcu('GET', `/lol-game-data/assets/v1/champions/${id}.json`);
+      if (ok(r) && r.json) perfis.set(id, dica.perfilDe(r.json));
+    }
+  }));
+  carregandoPerfis = false;
 }
 
 function nomeDe(p) {
@@ -161,24 +183,6 @@ let pegaveis = { ids: [], em: 0 };
 let ultimoDump = 0;
 const clientes = new Set();
 let qrLido = false; // o celular ja leu o QR de ligar o ntfy
-
-function sugerir(time, pool) {
-  const tem = new Set();
-  let algum = false;
-  for (const p of time) {
-    if (p.me) continue;
-    const c = champs.get(p.champ || p.intent);
-    if (c) { algum = true; c.roles.forEach((r) => tem.add(r)); }
-  }
-  const falta = algum ? PRECISA.filter((r) => !tem.has(r)) : [];
-  const lista = pool.map((id) => {
-    const c = champs.get(id);
-    if (!c) return null;
-    return { id, cobre: c.roles.filter((r) => falta.includes(r)).length, pts: maestria.get(id) || 0 };
-  }).filter((x) => x && (falta.length ? x.cobre > 0 : x.pts > 0))
-    .sort((a, b) => b.cobre - a.cobre || b.pts - a.pts).slice(0, 6);
-  return { falta: falta.map((r) => PAPEL[r]), champs: lista.map((x) => x.id) };
-}
 
 function montarSelecao(s, opcoes) {
   const eu = s.localPlayerCellId;
@@ -225,7 +229,12 @@ function montarSelecao(s, opcoes) {
     acao: acao(atual), plano: acao(plano),
     eu: { champ: mim.champ, locked: mim.locked },
     banco, opcoes: ops, rerolls: s.rerollsRemaining || 0,
-    sugestao: mim.locked && !aram ? { falta: [], champs: [] } : sugerir(meuTime, pool),
+    sugestao: mim.locked && !aram ? { falta: [], leitura: [], champs: [], motivos: {} } : dica.sugerir({
+      aliados: meuTime.filter((p) => !p.me).map((p) => p.champ || p.intent).filter(Boolean),
+      inimigos: inimigos.map((p) => p.champ).filter(Boolean),
+      pool, posicao: ((s.myTeam || []).find((p) => p.cellId === eu) || {}).assignedPosition || '',
+      champs, perfis, maestria, confrontos,
+    }),
     timerFase: (s.timer && s.timer.phase) || '',
   };
 }
@@ -265,6 +274,7 @@ async function ciclo() {
     }
     if (phase === 'ChampSelect') {
       pegaveis = { ids: [], em: 0 };
+      if (perfis.size < champs.size) carregarPerfis();
       avisar('Seleção de campeões', `${fila.label} — toque para abrir`, { priority: 4, tags: ['video_game'] });
     }
     faseAnterior = phase;

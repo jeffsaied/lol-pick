@@ -48,6 +48,7 @@
   #aviso.vez { border-color: var(--ouro); color: var(--ouro); }
   #aviso.vezban { border-color: var(--verm); color: #ff8b99; }
   #dica { margin: 0 0 10px; font-size: 13px; color: var(--fraco); }
+  #porque { margin: 6px 0 0; font-size: 13px; color: var(--azul); }
   .tira { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
   .tira button { flex: none; width: 54px; padding: 0; background: none; }
   .tira img { width: 54px; height: 54px; border-radius: 12px; border: 2px solid var(--azul); display: block; }
@@ -118,6 +119,7 @@
       <div id="escolha">
         <div id="dica"></div>
         <div id="sugestoes" class="tira"></div>
+        <div id="porque"></div>
         <input id="busca" type="search" placeholder="Digite o nome do campeão" autocomplete="off" autocapitalize="off" spellcheck="false">
         <div id="grade" class="grade"></div>
       </div>
@@ -176,6 +178,14 @@ async function carregarChamps() {
 const nome = (id) => (porId.get(id) || { name: '' }).name;
 const foto = (id) => `<img src="/icon/${id}" alt="" loading="lazy">`;
 
+// o que o servidor leu da partida e por que um campeao da dica serve
+const situacao = (sug) => [...(sug.falta.length ? ['Falta no time: ' + sug.falta.join(', ')] : []), ...(sug.leitura || [])].join(' · ');
+function porque(sug, id) {
+  const m = (sug.motivos || {})[id];
+  return m ? `${nome(id)}: ${m.join(', ')}` : '';
+}
+const melhorCom = (sug) => sug.champs.find((id) => (sug.motivos || {})[id]) || 0;
+
 function jogador(p, inimigo) {
   const id = p.champ || p.intent;
   const cls = ['jog', inimigo ? 'inimigo' : '', p.me ? 'me' : '', p.locked ? 'locked' : '', !p.champ && p.intent ? 'intent' : ''].join(' ');
@@ -223,7 +233,8 @@ function renderDraft(cs) {
   const sug = ehPick ? cs.sugestao : { falta: [], champs: [] };
   $('dica').hidden = !sug.champs.length;
   $('sugestoes').hidden = !sug.champs.length;
-  $('dica').textContent = sug.falta.length ? 'Falta no time: ' + sug.falta.join(', ') : 'Seus mais jogados';
+  $('dica').textContent = situacao(sug) || 'Seus mais jogados';
+  $('porque').textContent = porque(sug, sel) || porque(sug, melhorCom(sug));
   $('sugestoes').innerHTML = sug.champs.map((id) => `<button data-id="${id}" title="${esc(nome(id))}">${foto(id)}</button>`).join('');
 
   renderGrade(cs, alvo);
@@ -240,9 +251,10 @@ function renderAram(cs) {
   $('meu').innerHTML = (id ? foto(id) : '') + `<div><small>Seu campeão</small><b>${esc(id ? nome(id) : 'Sorteando…')}</b></div>`;
   $('dado').hidden = !cs.rerolls;
   $('dado').textContent = `Rolar o dado (${cs.rerolls})`;
-  const dica = new Set(cs.sugestao.champs);
-  $('dicaAram').textContent = cs.sugestao.falta.length && dica.size ? `Falta no time: ${cs.sugestao.falta.join(', ')} — os de borda azul resolvem` : '';
-  const lista = (ids) => ids.map((c) => botaoCh(c, dica.has(c) && cs.sugestao.falta.length ? 'dica' : '')).join('');
+  const sug = cs.sugestao;
+  const dica = new Set(sug.champs.filter((c) => (sug.motivos || {})[c]));
+  $('dicaAram').textContent = dica.size ? [situacao(sug), 'Os de borda azul ajudam', porque(sug, melhorCom(sug))].filter(Boolean).join(' · ') : '';
+  const lista = (ids) => ids.map((c) => botaoCh(c, dica.has(c) ? 'dica' : '')).join('');
   $('tOpcoes').hidden = $('opcoes').hidden = !cs.opcoes.length;
   $('opcoes').innerHTML = lista(cs.opcoes);
   $('tBanco').hidden = false;

@@ -11,7 +11,7 @@ Um programinha fica rodando no PC onde o LoL está aberto. Quando a fila acha pa
 - **Ranqueada / Flex:** a mesma caixa para banir e depois para escolher. Campeão banido ou já pego fica apagado.
 - **ARAM / ARAM: Desordem:** mostra o campeão que veio para você, as opções e o banco do time; cada toque troca na hora.
 - **Time ao vivo:** os ícones atualizam conforme os outros jogadores marcam e travam.
-- **Dica:** mostra o que falta no time (tanque, dano mágico, atirador, suporte) e sugere dos seus campeões com mais maestria.
+- **Dica:** lê o seu time e o adversário (falta de tanque ou de dano mágico, time sem linha de frente, adversário cheio de assassinos ou de tanques...) e sugere os campeões que resolvem, dando peso aos que você mais joga. Ao lado vem o motivo de cada um.
 
 ## Do que precisa
 
@@ -30,6 +30,22 @@ Um programinha fica rodando no PC onde o LoL está aberto. Quando a fila acha pa
 4. A janela avisa que ligou e fecha sozinha em 5 segundos: o programa continua rodando escondido. Para desligar, clique em `parar.bat`. Na primeira vez ele cria o atalho **Pick Automático**, com ícone, nesta pasta e na Área de Trabalho: nas próximas vezes é só clicar nele.
 
 Para ver os QR codes de novo (celular novo), use `configurar.bat`.
+
+## Seus confrontos (opcional)
+
+A dica já funciona sozinha, pelo perfil de cada campeão que o próprio LoL informa. Se quiser ensinar confrontos específicos, edite o `confrontos.json` com os nomes dos campeões:
+
+```json
+{
+  "Yasuo": {
+    "perdePara": ["Malphite", "Renekton"],
+    "ganhaDe": ["Lux"],
+    "combinaCom": ["Malphite", "Diana"]
+  }
+}
+```
+
+Com isso, quando o adversário pegar Yasuo, Malphite e Renekton sobem na dica e Lux desce; e quando um amigo pegar Yasuo, Malphite e Diana sobem. Vale a partir da próxima vez que o programa ligar.
 
 ## Sua chave
 
