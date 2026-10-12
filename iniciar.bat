@@ -3,11 +3,28 @@ title lol-pick
 cd /d "%~dp0"
 
 where node >nul 2>&1
-if errorlevel 1 (
-  echo Falta o Node.js. Instale a versao LTS em https://nodejs.org e clique neste arquivo de novo.
-  pause
-  exit /b
-)
+if not errorlevel 1 goto temnode
+
+rem Sem Node.js: oferece instalar pelo winget, o instalador oficial da Microsoft que ja vem no Windows.
+echo O lol-pick precisa do Node.js, que nao esta neste PC.
+where winget >nul 2>&1
+if errorlevel 1 goto manual
+choice /c SN /m "Instalar agora o Node.js oficial pelo winget da Microsoft"
+if errorlevel 2 goto manual
+winget install -e --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements
+set "PATH=%PATH%;%ProgramFiles%\nodejs"
+where node >nul 2>&1
+if not errorlevel 1 goto temnode
+echo Se a instalacao terminou, feche esta janela e clique no iniciar.bat de novo.
+pause
+exit /b
+
+:manual
+echo Instale a versao LTS em https://nodejs.org e clique neste arquivo de novo.
+pause
+exit /b
+
+:temnode
 
 rem Libera a porta para o celular alcancar o PC. So na primeira vez; o Windows pede permissao.
 netsh advfirewall firewall show rule name=lol-pick-8787 >nul 2>&1

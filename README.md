@@ -16,7 +16,7 @@ Um programinha fica rodando no PC onde o LoL está aberto. Quando a fila acha pa
 ## Do que precisa
 
 - Windows com o League of Legends instalado.
-- [Node.js](https://nodejs.org) versão 18 ou mais nova.
+- [Node.js](https://nodejs.org) versão 18 ou mais nova. Se não tiver, o `iniciar.bat` oferece instalar a versão oficial pelo `winget`, o instalador da Microsoft que já vem no Windows 10 e 11.
 - Celular na mesma rede do PC (o PC pode estar no cabo, desde que seja o mesmo roteador).
 
 ## Como usar
