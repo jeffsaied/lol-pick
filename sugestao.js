@@ -4,6 +4,7 @@
 
 const PRECISA = ['tank', 'mage', 'marksman', 'support'];
 const PAPEL = { tank: 'tanque', mage: 'dano mágico', marksman: 'atirador', support: 'suporte' };
+const ROTAS = ['top', 'jungle', 'middle', 'bottom', 'utility'];
 const DA_POSICAO = { top: ['fighter', 'tank'], middle: ['mage', 'assassin'], bottom: ['marksman'], utility: ['support'] };
 const SEM_PERFIL = { dano: '', longe: false, dur: 0, cc: 0, mob: 0 };
 const limpo = (t) => String(t).normalize('NFD').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
@@ -19,29 +20,42 @@ function perfilDe(c) {
   };
 }
 
-// confrontos.json e escrito com nomes; aqui vira pares de id.
-// { "Yasuo": { "perdePara": ["Malphite"], "ganhaDe": ["Lux"], "combinaCom": ["Malphite"] } }
-function lerConfrontos(tabela, champs) {
+// As tabelas de confronto sao escritas com nomes; aqui viram pares de id.
+// A mao (confrontos.json), vale em qualquer rota:
+//   { "Yasuo": { "perdePara": ["Malphite"], "ganhaDe": ["Lux"], "combinaCom": ["Malphite"] } }
+// Do site (confrontos-site.json), separado por rota:
+//   { "Yasuo": { "middle": { "perdePara": [...], "ganhaDe": [...] } } }
+function lerConfrontos(tabelas, champs) {
   const idDe = new Map();
   for (const c of champs.values()) {
     for (const n of [c.name, c.alias]) if (n && !idDe.has(limpo(n))) idDe.set(limpo(n), c.id);
   }
-  const vence = new Set(); // "a>b": a leva vantagem sobre b
+  const vence = new Set(); // "rota|a>b": a leva vantagem sobre b. rota '' = sempre, '*' = em alguma rota
   const combina = new Set(); // "a+b", nos dois sentidos
-  const semId = [];
+  const semId = new Set();
+  const achar = (n) => idDe.get(limpo(n)) || idDe.get(limpo(String(n).split(' & ')[0])); // "Nunu & Willump" muda com o idioma do cliente
   const ids = (nomes) => (Array.isArray(nomes) ? nomes : []).map((n) => {
-    const id = idDe.get(limpo(n));
-    if (!id) semId.push(n);
+    const id = achar(n);
+    if (!id) semId.add(n);
     return id;
   }).filter(Boolean);
-  for (const [nome, v] of Object.entries(tabela || {})) {
-    const a = idDe.get(limpo(nome));
-    if (!a || !v) { if (!a && !nome.startsWith('_')) semId.push(nome); continue; }
-    for (const b of ids(v.perdePara)) vence.add(`${b}>${a}`);
-    for (const b of ids(v.ganhaDe)) vence.add(`${a}>${b}`);
+  const anotar = (a, v, rotas) => {
+    for (const r of rotas) {
+      for (const b of ids(v.perdePara)) vence.add(`${r}|${b}>${a}`);
+      for (const b of ids(v.ganhaDe)) vence.add(`${r}|${a}>${b}`);
+    }
     for (const b of ids(v.combinaCom)) { combina.add(`${a}+${b}`); combina.add(`${b}+${a}`); }
+  };
+  for (const tabela of tabelas) {
+    for (const [nome, v] of Object.entries(tabela || {})) {
+      if (nome.startsWith('_') || !v) continue;
+      const a = achar(nome);
+      if (!a) { semId.add(nome); continue; }
+      anotar(a, v, ['']);
+      for (const rota of ROTAS) if (v[rota]) anotar(a, v[rota], [rota, '*']);
+    }
   }
-  return { vence, combina, semId };
+  return { vence, combina, semId: [...semId] };
 }
 
 function lerTime(ids, champs, perfis) {
@@ -88,6 +102,9 @@ function sugerir({ aliados, inimigos, pool, posicao, champs, perfis, maestria, c
 
   const { vence, combina } = confrontos || { vence: new Set(), combina: new Set() };
   const nome = (id) => (champs.get(id) || { name: '' }).name;
+  // com rota definida vale o confronto daquela rota; sem rota (as cegas), o de qualquer uma
+  const rotas = ['', ROTAS.includes(posicao) ? posicao : '*'];
+  const ganha = (a, b) => rotas.some((r) => vence.has(`${r}|${a}>${b}`));
   const daPosicao = DA_POSICAO[posicao] || [];
 
   const lista = [];
@@ -107,8 +124,10 @@ function sugerir({ aliados, inimigos, pool, posicao, champs, perfis, maestria, c
       if (!cobre.includes(papel) && serve(c, p)) { pontos += peso; motivos.push(motivo); }
     }
     for (const e of inimigos) {
-      if (vence.has(`${id}>${e}`)) { pontos += 3; motivos.push('bom contra ' + nome(e)); }
-      if (vence.has(`${e}>${id}`)) { pontos -= 3; motivos.push('sofre contra ' + nome(e)); }
+      const bom = ganha(id, e);
+      const ruim = ganha(e, id);
+      if (bom && !ruim) { pontos += 3; motivos.push('bom contra ' + nome(e)); }
+      if (ruim && !bom) { pontos -= 3; motivos.push('sofre contra ' + nome(e)); }
     }
     for (const a of aliados) {
       if (combina.has(`${id}+${a}`)) { pontos += 2; motivos.push('combina com ' + nome(a)); }

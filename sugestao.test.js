@@ -54,7 +54,7 @@ test('posicao favorece a classe da rota', () => {
 });
 
 test('confrontos: vantagem, desvantagem e dupla', () => {
-  const c = lerConfrontos({ Yasuo: { perdePara: ['malphite'], ganhaDe: ['Lux'], combinaCom: ['Malphite'] }, Kaisa: { ganhaDe: ['Jinx'] }, _nota: 'x', Fulano: {} }, champs);
+  const c = lerConfrontos([{ Yasuo: { perdePara: ['malphite'], ganhaDe: ['Lux'], combinaCom: ['Malphite'] }, Kaisa: { ganhaDe: ['Jinx'] }, _nota: 'x', Fulano: {} }], champs);
   assert.deepStrictEqual(c.semId, ['Fulano']);
   const contra = sugerir({ ...base, inimigos: [6], pool: [1, 5, 7], maestria: new Map([[5, 100]]), confrontos: c });
   assert.strictEqual(contra.champs[0], 1);
@@ -63,6 +63,24 @@ test('confrontos: vantagem, desvantagem e dupla', () => {
   const junto = sugerir({ ...base, aliados: [6], pool: [1, 7], confrontos: c });
   assert.ok(junto.motivos[1].includes('combina com Yasuo'));
   assert.ok(sugerir({ ...base, inimigos: [4], pool: [8], confrontos: c }).motivos[8].includes('bom contra Jinx')); // apostrofo no nome
+});
+
+test('confronto do site so vale na rota dele', () => {
+  const c = lerConfrontos([{ _patch: '16.20', Yasuo: { middle: { perdePara: ['Malphite'], ganhaDe: [] } } }], champs);
+  const com = (posicao) => sugerir({ ...base, inimigos: [6], pool: [1], posicao, confrontos: c }).motivos[1] || [];
+  assert.ok(com('middle').includes('bom contra Yasuo'));
+  assert.ok(!com('bottom').includes('bom contra Yasuo'));
+  assert.ok(com('').includes('bom contra Yasuo')); // sem rota definida vale o de qualquer rota
+});
+
+test('pagina do counterstats vira tabela por rota', () => {
+  const linha = (rota, nome, pct) => `<a class="champ-box__row" href="/league-of-legends/lux/vs-x/${rota}/all">
+    <div class="best-wrap"><span class="champion">${nome}</span><span class="win">Win <span class="b">${pct}%</span></span></div></a>`;
+  const html = '<h1>Lux Counter Stats</h1>' + linha('support', 'Nami', 54) + linha('support', 'Brand', 50) + linha('middle', 'Vel&#039;Koz', 55) + linha('middle', 'Ryze', 44);
+  assert.deepStrictEqual(require('./atualizar-confrontos').lerPagina(html), {
+    nome: 'Lux',
+    rotas: { utility: { perdePara: ['Nami'], ganhaDe: [] }, middle: { perdePara: ["Vel'Koz"], ganhaDe: ['Ryze'] } },
+  });
 });
 
 test('campeao sem perfil carregado ainda entra pela classe', () => {

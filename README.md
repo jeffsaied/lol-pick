@@ -11,7 +11,7 @@ Um programinha fica rodando no PC onde o LoL está aberto. Quando a fila acha pa
 - **Ranqueada / Flex:** a mesma caixa para banir e depois para escolher. Campeão banido ou já pego fica apagado.
 - **ARAM / ARAM: Desordem:** mostra o campeão que veio para você, as opções e o banco do time; cada toque troca na hora.
 - **Time ao vivo:** os ícones atualizam conforme os outros jogadores marcam e travam.
-- **Dica:** lê o seu time e o adversário (falta de tanque ou de dano mágico, time sem linha de frente, adversário cheio de assassinos ou de tanques...) e sugere os campeões que resolvem, dando peso aos que você mais joga. Ao lado vem o motivo de cada um.
+- **Dica:** lê o seu time e o adversário (falta de tanque ou de dano mágico, time sem linha de frente, adversário cheio de assassinos ou de tanques...) e sugere os campeões que resolvem, dando peso aos que você mais joga e aos que levam vantagem na sua rota contra quem o adversário já pegou. Ao lado vem o motivo de cada um.
 
 ## Do que precisa
 
@@ -31,9 +31,11 @@ Um programinha fica rodando no PC onde o LoL está aberto. Quando a fila acha pa
 
 Para ver os QR codes de novo (celular novo), use `configurar.bat`.
 
-## Seus confrontos (opcional)
+## Confrontos (counters)
 
-A dica já funciona sozinha, pelo perfil de cada campeão que o próprio LoL informa. Se quiser ensinar confrontos específicos, edite o `confrontos.json` com os nomes dos campeões:
+Os confrontos por rota vêm do [counterstats.net](https://www.counterstats.net): o programa baixa a tabela sozinho na primeira vez que liga (uns 3 minutos, em segundo plano) e de novo a cada 14 dias, guardando em `confrontos-site.json`. Para não baixar nada, ponha `"confrontosDoSite": false` no `config.json`. Para baixar na hora: `node atualizar-confrontos.js`.
+
+Se quiser ensinar confrontos seus, que valem em qualquer rota e somam aos do site, edite o `confrontos.json` com os nomes dos campeões:
 
 ```json
 {
@@ -58,6 +60,8 @@ Na primeira vez que liga, o programa cria o arquivo `config.json` com uma chave 
 - O navegador não deixa adicionar à tela inicial sozinho: é um toque seu.
 
 ## Créditos
+
+Os confrontos são lidos das páginas públicas do [counterstats.net](https://www.counterstats.net) (MOBAFire); cada PC baixa a sua cópia, o projeto não redistribui esses dados.
 
 Os QR codes usam o [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) de Kazuhiko Arase (licença MIT), em `vendor/qrcode.js`.
 

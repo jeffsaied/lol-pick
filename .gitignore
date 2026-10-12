@@ -7,3 +7,6 @@ node_modules/
 *.lnk
 # o que o programa escreveria na janela, agora que roda escondido
 *.log
+
+# confrontos baixados do counterstats.net: cada PC baixa os seus
+confrontos-site.json

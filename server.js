@@ -7,6 +7,7 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 const dica = require('./sugestao');
+const site = require('./atualizar-confrontos');
 
 const DIR = __dirname;
 const CFG_FILE = path.join(DIR, 'config.json');
@@ -20,6 +21,7 @@ function loadConfig() {
     ntfyServer: 'https://ntfy.sh',
     topic: 'lolpick-' + crypto.randomBytes(5).toString('hex'),
     lockfile: 'C:\\Riot Games\\League of Legends\\lockfile',
+    confrontosDoSite: true, // baixa os confrontos do counterstats.net a cada 14 dias
     configurado: false,
   };
   let cfg = {};
@@ -128,11 +130,17 @@ async function carregarCampeoes() {
   champs = new Map(r.json.filter((c) => c.id > 0).map((c) => [c.id, { id: c.id, name: c.name, alias: c.alias || '', roles: c.roles || [] }]));
   const m = await lcu('GET', '/lol-champion-mastery/v1/local-player/champion-mastery');
   if (ok(m) && Array.isArray(m.json)) maestria = new Map(m.json.map((x) => [x.championId, x.championPoints || 0]));
-  let tabela = {};
-  try { tabela = JSON.parse(fs.readFileSync(path.join(DIR, 'confrontos.json'), 'utf8')); } catch {}
-  confrontos = dica.lerConfrontos(tabela, champs);
-  if (confrontos.semId.length) console.log('confrontos.json: nome que nao e campeao:', confrontos.semId.join(', '));
+  carregarConfrontos();
   carregarPerfis();
+}
+
+// o do site (por rota) e o escrito a mao; qualquer um dos dois pode faltar
+function carregarConfrontos() {
+  const tabelas = [site.ARQUIVO, path.join(DIR, 'confrontos.json')].map((arq) => {
+    try { return JSON.parse(fs.readFileSync(arq, 'utf8')); } catch { return {}; }
+  });
+  confrontos = dica.lerConfrontos(tabelas, champs);
+  if (confrontos.semId.length) console.log('confrontos: nome que nao e campeao:', confrontos.semId.join(', '));
 }
 
 // um pedido por campeao; a dica funciona sem isso (so por papel e maestria) e melhora quando chega
@@ -489,4 +497,7 @@ servidor.listen(cfg.port, '0.0.0.0', () => {
     require('child_process').exec(`start "" "http://localhost:${cfg.port}/pc"`);
   }
   laco();
+  if (cfg.confrontosDoSite && !process.env.LOLPICK_SEM_SITE) {
+    site.atualizarSePreciso(console.log).then((novo) => { if (novo && champs.size) carregarConfrontos(); });
+  }
 });
