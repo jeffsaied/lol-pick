@@ -27,7 +27,7 @@ Um programinha fica rodando no PC onde o LoL está aberto. Quando a fila acha pa
    1. baixar o app ntfy;
    2. ligar o ntfy ao seu PC (depois de ler, mande o aviso de teste);
    3. abrir a página e adicioná-la à tela inicial (menu ⋮ → Adicionar à tela inicial).
-4. Deixe a janela preta aberta enquanto joga. Na primeira vez o programa cria o atalho **Pick Automático**, com ícone, nesta pasta e na Área de Trabalho: nas próximas vezes é só clicar nele.
+4. A janela avisa que ligou e fecha sozinha em 5 segundos: o programa continua rodando escondido. Para desligar, clique em `parar.bat`. Na primeira vez ele cria o atalho **Pick Automático**, com ícone, nesta pasta e na Área de Trabalho: nas próximas vezes é só clicar nele.
 
 Para ver os QR codes de novo (celular novo), use `configurar.bat`.
 

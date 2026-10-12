@@ -410,6 +410,7 @@ const servidor = http.createServer(async (req, res) => {
       const acao = url.searchParams.get('acao');
       if (acao === 'teste') avisar('Teste do Pick Automático', 'Se você está lendo isto, o aviso funciona.', { priority: 4, tags: ['bell'] });
       if (acao === 'concluir') marcarConfigurado();
+      if (acao === 'desligar') setTimeout(() => process.exit(0), 200); // pedido do parar.bat
       return json(res, 200, { ok: true });
     }
     return json(res, 200, {
@@ -477,21 +478,5 @@ servidor.listen(cfg.port, '0.0.0.0', () => {
   if ((!cfg.configurado || process.env.LOLPICK_CONFIGURAR) && !process.env.LOLPICK_SEM_NTFY) {
     require('child_process').exec(`start "" "http://localhost:${cfg.port}/pc"`);
   }
-  if (process.env.LOLPICK_JANELA) avisarEMinimizar();
   laco();
 });
-
-// Aberto pelo iniciar.bat: explica para que serve a janela e, 5 segundos depois, manda ela para a barra de tarefas.
-function avisarEMinimizar() {
-  const titulo = process.env.LOLPICK_TITULO || 'Pick Automatico';
-  process.title = titulo;
-  console.log('');
-  console.log('Esta janela e o que liga o seu PC ao celular.');
-  console.log('Ela precisa ficar aberta enquanto voce joga. Para desligar, feche a janela.');
-  console.log('Em 5 segundos ela vai sozinha para a barra de tarefas.');
-  const ps = `Add-Type -Namespace W -Name U -MemberDefinition '[DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr h, int c);'; ` +
-    `Get-Process | Where-Object { $_.MainWindowTitle -like '${titulo}*' } | ForEach-Object { [void][W.U]::ShowWindowAsync($_.MainWindowHandle, 6) }`;
-  setTimeout(() => {
-    require('child_process').execFile('powershell', ['-NoProfile', '-EncodedCommand', Buffer.from(ps, 'utf16le').toString('base64')], { windowsHide: true }, () => {});
-  }, 5000);
-}

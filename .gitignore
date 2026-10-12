@@ -5,3 +5,5 @@ debug/
 node_modules/
 # atalho criado pelo iniciar.bat (guarda o caminho da pasta de cada pessoa)
 *.lnk
+# o que o programa escreveria na janela, agora que roda escondido
+*.log

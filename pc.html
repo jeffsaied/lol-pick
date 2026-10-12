@@ -69,7 +69,7 @@ function render() {
   $('proximo').textContent = fim ? 'Fechar' : passo === 2 ? 'Concluir' : 'Próximo';
   if (fim) {
     $('titulo').textContent = 'Tudo ligado';
-    $('texto').textContent = 'Pode fechar esta aba. Deixe a janela preta do Pick Automático aberta enquanto joga; da próxima vez é só clicar no iniciar.bat.';
+    $('texto').textContent = 'Pode fechar esta aba. O programa fica rodando escondido no PC; para desligar, clique no parar.bat. Da próxima vez é só clicar no atalho Pick Automático.';
     return;
   }
   if (passo === 0) {
