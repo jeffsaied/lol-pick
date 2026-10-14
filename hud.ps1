@@ -106,6 +106,12 @@ function Pedir($caminho, [switch]$Post) {
         <StackPanel x:Name="MelhoresLista"/>
       </StackPanel>
     </Border>
+    <Border x:Name="Jogo" Visibility="Collapsed" BorderBrush="#26334D" BorderThickness="0,1,0,0" Margin="14,0,14,12" Padding="0,10,0,0">
+      <StackPanel>
+        <TextBlock Text="ADVERSÁRIOS" Foreground="#C8AA6E" FontSize="10" FontWeight="Bold" Margin="0,0,0,5"/>
+        <StackPanel x:Name="JogoLista"/>
+      </StackPanel>
+    </Border>
     <Border x:Name="Itens" Visibility="Collapsed" BorderBrush="#26334D" BorderThickness="0,1,0,0" Margin="14,0,14,12" Padding="0,10,0,0">
       <StackPanel>
         <TextBlock x:Name="ItensTitulo" Foreground="#C8AA6E" FontSize="10" FontWeight="Bold" Margin="0,0,0,5"/>
@@ -184,37 +190,54 @@ function Linha($figura, $nome, $sub, $tier) {
 }
 
 # Uma fileira de itens: o rotulo e as figuras lado a lado (o nome aparece ao parar o mouse em cima).
-function Fileira($rotulo, $lista) {
+function Fileira($rotulo, $lista, $pasta = 'item') {
     $p = New-Object Windows.Controls.StackPanel
     $p.Orientation = 'Horizontal'; $p.Margin = '0,3,0,3'
     $t = New-Object Windows.Controls.TextBlock
-    $t.Text = $rotulo; $t.Width = 62; $t.Foreground = $Pincel.ConvertFromString('#A09B8C'); $t.FontSize = 11; $t.VerticalAlignment = 'Center'
+    $t.Text = $rotulo; if ($rotulo) { $t.Width = 62 }; $t.Foreground = $Pincel.ConvertFromString('#A09B8C'); $t.FontSize = 11; $t.VerticalAlignment = 'Center'
     [void]$p.Children.Add($t)
     foreach ($i in @($lista)) {
         $img = New-Object Windows.Controls.Image
         $img.Width = 30; $img.Height = 30; $img.Margin = '0,0,5,0'; $img.ToolTip = $i.nome
-        try { $img.Source = New-Object Windows.Media.Imaging.BitmapImage([Uri]"$Base/item/$($i.id)") } catch {}
+        try { $img.Source = New-Object Windows.Media.Imaging.BitmapImage([Uri]"$Base/$pasta/$($i.id)") } catch {}
         [void]$p.Children.Add($img)
     }
     return $p
 }
 
+# Uma linha de texto solta dentro de uma secao.
+function Texto($t, $cor = '#F0E6D2') {
+    $b = New-Object Windows.Controls.TextBlock
+    $b.Text = $t; $b.Foreground = $Pincel.ConvertFromString($cor); $b.FontSize = 12; $b.TextWrapping = 'Wrap'; $b.Margin = '0,2,0,2'
+    return $b
+}
+
 # Nos modos ARAM: melhores campeoes entre as suas opcoes (na selecao) e melhores aprimoramentos (Desordem).
 $melhoresLeitura = $win.FindName('MelhoresLeitura')
 $melhores = $win.FindName('Melhores'); $melhoresTitulo = $win.FindName('MelhoresTitulo'); $melhoresLista = $win.FindName('MelhoresLista')
+$jogo = $win.FindName('Jogo'); $jogoLista = $win.FindName('JogoLista')
 $itens = $win.FindName('Itens'); $itensTitulo = $win.FindName('ItensTitulo'); $itensLista = $win.FindName('ItensLista')
 $augs = $win.FindName('Augs'); $augsTitulo = $win.FindName('AugsTitulo'); $augsLista = $win.FindName('AugsLista')
 $assinaturaAram = ''
 function Mostrar-Aram($e) {
-    $sig = [string]$e.leitura + '|' + ($e.melhores | ConvertTo-Json -Compress -Depth 4) + '|' + ($e.desordem | ConvertTo-Json -Compress -Depth 4)
+    $sig = ($e.jogo | ConvertTo-Json -Compress -Depth 4) + '|' + ($e.itens | ConvertTo-Json -Compress -Depth 4) + '|' + [string]$e.leitura + '|' + ($e.melhores | ConvertTo-Json -Compress -Depth 4) + '|' + ($e.desordem | ConvertTo-Json -Compress -Depth 4)
     if ($sig -eq $script:assinaturaAram) { return }
     $script:assinaturaAram = $sig
     $melhoresLista.Children.Clear()
     $augsLista.Children.Clear()
     $itensLista.Children.Clear()
-    $it = if ($e.desordem) { $e.desordem.itens } else { $null }
+    $jogoLista.Children.Clear()
+    # com a partida aberta: quem esta do outro lado e o que isso pede
+    if ($e.jogo -and @($e.jogo.inimigos).Count -gt 0) {
+        [void]$jogoLista.Children.Add((Fileira '' $e.jogo.inimigos 'icon'))
+        foreach ($l in @($e.jogo.leitura)) { [void]$jogoLista.Children.Add((Texto $l)) }
+        if (@($e.jogo.cuidado).Count) { [void]$jogoLista.Children.Add((Texto ("Cuidado na rota: " + (@($e.jogo.cuidado) -join ', ')) '#FF8B99')) }
+        if (@($e.jogo.vantagem).Count) { [void]$jogoLista.Children.Add((Texto ("Você leva vantagem sobre: " + (@($e.jogo.vantagem) -join ', ')) '#3CCF7E')) }
+        $jogo.Visibility = 'Visible'
+    } else { $jogo.Visibility = 'Collapsed' }
+    $it = $e.itens
     if ($it -and @($it.nucleo).Count -gt 0) {
-        $itensTitulo.Text = "ITENS MAIS USADOS  ·  $($e.desordem.nome)".ToUpper()
+        $itensTitulo.Text = ([string]$it.titulo).ToUpper()
         if (@($it.inicial).Count) { [void]$itensLista.Children.Add((Fileira 'Início' $it.inicial)) }
         if (@($it.botas).Count) { [void]$itensLista.Children.Add((Fileira 'Botas' $it.botas)) }
         $n = 0

@@ -122,19 +122,23 @@ function lerRunas(html) {
 // apelido: o nome interno do campeao no LoL, usado se a lista do op.gg ainda nao disse como ele chama o campeao.
 async function runas(modo, id, posicao, apelido) {
   const chaveGuardada = `${modo ? 'aram' : 'sr'}|${id}|${modo ? '' : posicao || ''}`;
-  if (fresco(dados.runas[chaveGuardada], 3 * DIA)) return dados.runas[chaveGuardada];
+  if (fresco(dados.runas[chaveGuardada], 3 * DIA) && dados.runas[chaveGuardada].itens) return dados.runas[chaveGuardada]; // arquivo de versao antiga nao tinha os itens
   await atualizarLista('aram').catch(() => {}); // so para saber o nome do campeao no site
   const doSite = dados.listas.aram && dados.listas.aram.champs[id];
   const nome = doSite ? doSite.chave : String(apelido || '').toLowerCase();
   if (!nome) return null;
   // a Desordem nao tem pagina de runas propria: vale a do ARAM
   const caminho = modo ? `modes/aram/${nome}/build` : `champions/${nome}/build${ROTA[posicao] ? '/' + ROTA[posicao] : ''}`;
-  const r = lerRunas(await pagina(caminho));
+  const html = await pagina(caminho);
+  const r = lerRunas(html);
   if (!r || r.ids.length !== 9) throw new Error(`a pagina do op.gg mudou: nao achei as runas de ${nome}`);
-  dados.runas[chaveGuardada] = { em: new Date().toISOString(), ...r };
+  dados.runas[chaveGuardada] = { em: new Date().toISOString(), ...r, itens: lerItens(html) }; // a mesma pagina traz os itens
   gravar();
   return dados.runas[chaveGuardada];
 }
+
+// o que ja foi baixado de runas e itens para o campeao (mesmos argumentos de runas()), sem ir ao site; null se nada
+const guardado = (modo, id, posicao) => dados.runas[`${modo ? 'aram' : 'sr'}|${id}|${modo ? '' : posicao || ''}`] || null;
 
 // itens mais usados com o campeao na Desordem, ou null se a pagina dele ainda nao foi baixada
 const itens = (id) => (dados.porCampeao[id] && dados.porCampeao[id].itens) || null;
@@ -159,4 +163,4 @@ function aprimoramentos(id, quantos = 10) {
   return { doCampeao: false, lista: gerais.slice(0, quantos).map(um) };
 }
 
-module.exports = { ARQUIVO, lerLista, lerCampeao, atualizarLista, atualizarCampeao, lerItens, lerRunas, runas, tiers, campeao, itens, aprimoramentos, todosAprimoramentos };
+module.exports = { ARQUIVO, lerLista, lerCampeao, atualizarLista, atualizarCampeao, lerItens, lerRunas, runas, guardado, tiers, campeao, itens, aprimoramentos, todosAprimoramentos };

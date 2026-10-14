@@ -78,6 +78,23 @@ function lerTime(ids, champs, perfis) {
   return t;
 }
 
+// Um time em poucas palavras, para mostrar quando a partida comeca: tipos de dano, tanques, assassinos e o que fazer.
+function descrever(ids, champs, perfis) {
+  const t = lerTime(ids, champs, perfis);
+  if (!t.sabidos) return [];
+  const soFisico = t.sabidos - t.magico;
+  const soMagico = t.sabidos - t.fisico;
+  const misto = t.sabidos - soFisico - soMagico;
+  const partes = [];
+  const dano = [soFisico && `${soFisico} de dano físico`, soMagico && `${soMagico} de dano mágico`, misto && `${misto} de dano misto`].filter(Boolean);
+  if (dano.length) partes.push(dano.join(', '));
+  const tipos = [t.frente && `${t.frente} ${t.frente > 1 ? 'tanques' : 'tanque'}`, t.assassinos && `${t.assassinos} ${t.assassinos > 1 ? 'assassinos' : 'assassino'}`, t.longe && `${t.longe} à distância`].filter(Boolean);
+  if (tipos.length) partes.push(tipos.join(', '));
+  if (soFisico >= 4) partes.push('Quase tudo dano físico: armadura rende muito');
+  if (soMagico >= 4) partes.push('Quase tudo dano mágico: resistência mágica rende muito');
+  return partes;
+}
+
 // aliados e inimigos: ids ja escolhidos (sem voce). pool: ids que voce pode pegar. posicao: a do LoL (top, jungle...).
 // tiers: id -> tier do campeao no modo (1 e o melhor), com o nome do modo em ondeTier; so nos modos ARAM
 function sugerir({ aliados, inimigos, pool, posicao, champs, perfis, maestria, confrontos, tiers, ondeTier = '', quantos = 6 }) {
@@ -159,4 +176,4 @@ function sugerir({ aliados, inimigos, pool, posicao, champs, perfis, maestria, c
   };
 }
 
-module.exports = { perfilDe, lerConfrontos, sugerir };
+module.exports = { perfilDe, lerConfrontos, sugerir, descrever };

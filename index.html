@@ -278,7 +278,14 @@ function render() {
 
   if (!S.lol) $('parado').innerHTML = '<b>LoL fechado</b>Abra o cliente no PC.';
   else if (S.phase === 'Matchmaking') $('parado').innerHTML = '<b>Na fila…</b>Aviso assim que achar partida.';
-  else if (S.phase === 'InProgress' || S.phase === 'GameStart') $('parado').innerHTML = '<b>Partida em andamento</b>Bom jogo.';
+  else if (S.phase === 'InProgress' || S.phase === 'GameStart') {
+    const j = S.jogo;
+    $('parado').innerHTML = '<b>Partida em andamento</b>' + (!j ? 'Bom jogo.' : `Você de ${esc(j.eu.nome)} contra:` +
+      `<div class="time" style="margin:14px 0">${j.inimigos.map((p) => `<div class="jog inimigo locked"><div class="foto">${foto(p.id)}</div><small class="c">${esc(p.nome)}</small></div>`).join('')}</div>` +
+      j.leitura.map((l) => `<div>${esc(l)}</div>`).join('') +
+      (j.cuidado.length ? `<div style="color:#ff8b99">Cuidado na rota: ${esc(j.cuidado.join(', '))}</div>` : '') +
+      (j.vantagem.length ? `<div style="color:var(--ok)">Você leva vantagem sobre: ${esc(j.vantagem.join(', '))}</div>` : ''));
+  }
   else $('parado').innerHTML = '<b>Aguardando</b>Entre numa fila no PC.';
 
   if (S.phase === 'ReadyCheck') {

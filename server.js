@@ -221,7 +221,9 @@ let estado = { lol: false, phase: 'None' };
 let assinatura = '';
 let faseAnterior = 'None';
 let fila = { id: 0, label: '', gameMode: '' };
-let partida = { modo: '', champ: 0 }; // modo ARAM ('aram' ou 'desordem') e o seu campeao, guardados ate a partida acabar
+let partida = { modo: '', champ: 0, posicao: '' }; // modo ARAM ('aram' ou 'desordem'), seu campeao e sua rota, guardados ate a partida acabar
+let jogo = null; // com a partida aberta: { aliados, inimigos } em ids de campeao
+let jogoEm = 0;
 const NOME_MODO = { aram: 'ARAM', desordem: 'ARAM: Desordem' };
 const modoAram = () => (fila.id === 2400 || fila.gameMode === 'KIWI' ? 'desordem' : (fila.id === 450 || fila.gameMode === 'ARAM' ? 'aram' : ''));
 let sessaoCS = null; // ultima sessao crua da selecao
@@ -329,7 +331,8 @@ async function ciclo() {
     }
     if (phase === 'ChampSelect') {
       pegaveis = { ids: [], em: 0 };
-      partida = { modo: modoAram(), champ: 0 };
+      partida = { modo: modoAram(), champ: 0, posicao: '' };
+      jogo = null;
       runasFeitas = ''; runasAviso = ''; runasAlvo = { chave: '', desde: 0 };
       if (partida.modo) opgg.atualizarLista(partida.modo).catch((e) => deuErro('dados do op.gg', e.message));
       if (perfis.size < champs.size) carregarPerfis();
@@ -371,9 +374,10 @@ async function ciclo() {
         runasFeitas = chaveRunas;
         puxarRunas(alvo, posicao).catch((e) => { runasAviso = 'Runas: não consegui buscar'; deuErro('runas do op.gg', e.message); });
       }
-      if (partida.modo === 'desordem' && novo.cs.eu.champ && novo.cs.eu.champ !== partida.champ) {
+      partida.posicao = posicao;
+      if (novo.cs.eu.champ && novo.cs.eu.champ !== partida.champ) {
         partida.champ = novo.cs.eu.champ;
-        opgg.atualizarCampeao(partida.champ).catch((e) => deuErro('dados do op.gg', e.message));
+        if (partida.modo === 'desordem') opgg.atualizarCampeao(partida.champ).catch((e) => deuErro('dados do op.gg', e.message));
       }
       restante = (sessaoCS.timer && sessaoCS.timer.adjustedTimeLeftInPhase) || 0;
       if (Date.now() - ultimoDump > 5000) {
@@ -387,10 +391,15 @@ async function ciclo() {
   } else {
     sessaoCS = null;
     const emJogo = ['GameStart', 'InProgress', 'Reconnect'].includes(phase);
-    if (!emJogo) partida = { modo: '', champ: 0 };
-    else if (!partida.champ && modoAram()) await acharPartida(); // o programa foi ligado com a partida ja andando
+    if (!emJogo) { partida = { modo: '', champ: 0, posicao: '' }; jogo = null; }
+    else {
+      if (!partida.champ) await acharPartida(); // o programa foi ligado com a partida ja andando
+      if (!jogo) await lerJogo();
+    }
   }
 
+  const aoVivo = resumoDoJogo();
+  if (aoVivo) novo.jogo = aoVivo;
   publicar(novo, restante);
   return phase === 'ChampSelect' || phase === 'ReadyCheck' ? 400 : 1500;
 }
@@ -421,9 +430,63 @@ async function acharPartida() {
   const todos = [...(dados.playerChampionSelections || []), ...(dados.teamOne || []), ...(dados.teamTwo || [])];
   const meu = todos.find((p) => p.puuid && p.puuid === eu.json.puuid && p.championId);
   if (!meu) return;
-  partida = { modo: modoAram(), champ: meu.championId };
-  opgg.atualizarLista(partida.modo).catch((e) => deuErro('dados do op.gg', e.message));
+  partida = { modo: modoAram(), champ: meu.championId, posicao: String(meu.selectedPosition || '').toLowerCase() };
+  if (partida.modo) opgg.atualizarLista(partida.modo).catch((e) => deuErro('dados do op.gg', e.message));
   if (partida.modo === 'desordem') opgg.atualizarCampeao(partida.champ).catch((e) => deuErro('dados do op.gg', e.message));
+}
+
+// O jogo aberto conta quem esta na partida numa porta local propria (a "Live Client Data" da Riot), so depois de carregar.
+function doJogo(caminho) {
+  return new Promise((resolve) => {
+    const base = new URL(process.env.LOLPICK_AOVIVO || 'https://127.0.0.1:2999');
+    const req = (base.protocol === 'http:' ? http : https).get({ host: base.hostname, port: base.port, path: caminho, rejectUnauthorized: false }, (res) => {
+      let txt = '';
+      res.on('data', (c) => { txt += c; });
+      res.on('end', () => { try { resolve(res.statusCode === 200 ? JSON.parse(txt) : null); } catch { resolve(null); } });
+    });
+    req.on('error', () => resolve(null));
+    req.setTimeout(1500, () => req.destroy());
+  });
+}
+
+// quem esta na partida: tenta a cada 4 s ate o jogo responder, e ai avisa no celular
+async function lerJogo() {
+  if (Date.now() - jogoEm < 4000) return;
+  jogoEm = Date.now();
+  const lista = await doJogo('/liveclientdata/playerlist');
+  const meuNome = await doJogo('/liveclientdata/activeplayername');
+  if (!Array.isArray(lista) || !lista.length || typeof meuNome !== 'string') return;
+  const porApelido = new Map();
+  for (const c of champs.values()) if (c.alias && !porApelido.has(c.alias.toLowerCase())) porApelido.set(c.alias.toLowerCase(), c.id);
+  const idDe = (p) => porApelido.get(String(p.rawChampionName || '').split('_').pop().toLowerCase()) || 0;
+  const eu = lista.find((p) => [p.riotId, p.summonerName, `${p.riotIdGameName}#${p.riotIdTagLine}`].includes(meuNome));
+  if (!eu) return;
+  if (!partida.champ) partida.champ = idDe(eu);
+  jogo = {
+    aliados: lista.filter((p) => p.team === eu.team && p !== eu).map(idDe).filter(Boolean),
+    inimigos: lista.filter((p) => p.team !== eu.team).map(idDe).filter(Boolean),
+  };
+  const nome = (id) => (champs.get(id) || { name: '' }).name;
+  // runas e itens do campeao, caso a selecao tenha sido pulada (Swiftplay) ou o programa tenha ligado depois
+  const c = champs.get(partida.champ);
+  if (c) opgg.runas(partida.modo, partida.champ, partida.posicao, c.alias).catch((e) => deuErro('dados do op.gg', e.message));
+  avisar('Partida iniciada', `Você de ${nome(partida.champ) || '?'} contra ${jogo.inimigos.map(nome).join(', ') || '?'}`, { priority: 3, tags: ['video_game'] });
+}
+
+// a partida em poucas linhas, para o painel do PC e a pagina do celular; null fora de partida
+function resumoDoJogo() {
+  if (!jogo || !['GameStart', 'InProgress', 'Reconnect'].includes(faseAnterior)) return null;
+  const nome = (id) => (champs.get(id) || { name: '' }).name;
+  const rotas = ['', partida.posicao || '*'];
+  const ganha = (a, b) => !!confrontos && rotas.some((r) => confrontos.vence.has(`${r}|${a}>${b}`));
+  const eu = partida.champ;
+  return {
+    eu: { id: eu, nome: nome(eu) },
+    inimigos: jogo.inimigos.map((id) => ({ id, nome: nome(id) })),
+    leitura: dica.descrever(jogo.inimigos, champs, perfis),
+    cuidado: jogo.inimigos.filter((e) => ganha(e, eu) && !ganha(eu, e)).map(nome),
+    vantagem: jogo.inimigos.filter((e) => ganha(eu, e) && !ganha(e, eu)).map(nome),
+  };
 }
 
 async function laco() {
@@ -485,18 +548,22 @@ function paraOPainel() {
   }
   const leitura = cs && !aram ? [...(cs.sugestao.falta.length ? ['Falta: ' + cs.sugestao.falta.join(', ')] : []), ...cs.sugestao.leitura].join(' · ') : '';
   let desordem = null;
+  // itens mais usados com o seu campeao: na Desordem, os do modo; nos outros, os da pagina de build (por rota)
+  const comNome = (ids) => ids.slice(0, 4).map((id) => ({ id, nome: (itensDoJogo.get(id) || {}).nome || '' }));
+  const it = !partida.champ ? null : (partida.modo === 'desordem' ? opgg.itens(partida.champ) : (opgg.guardado(partida.modo, partida.champ, partida.posicao) || {}).itens);
+  // as linhas mais usadas de cada tabela: inicial e botas, uma; nucleo, tres
+  const itens = it && it.nucleo.length ? {
+    titulo: `Itens mais usados  ·  ${nome(partida.champ)}`,
+    inicial: comNome(it.inicial[0] || []), botas: comNome((it.botas[0] || []).concat(it.botas[1] || [])), nucleo: it.nucleo.slice(0, 3).map(comNome),
+  } : null;
   if (partida.modo === 'desordem' && partida.champ) {
     const a = opgg.aprimoramentos(partida.champ);
-    const it = opgg.itens(partida.champ);
-    const comNome = (ids) => ids.map((id) => ({ id, nome: (itensDoJogo.get(id) || {}).nome || '' }));
     desordem = {
       nome: nome(partida.champ), doCampeao: a.doCampeao,
-      // as linhas mais usadas de cada tabela: inicial e botas, uma; nucleo, tres
-      itens: it ? { inicial: comNome(it.inicial[0] || []), botas: comNome((it.botas[0] || []).concat(it.botas[1] || [])), nucleo: it.nucleo.slice(0, 3).map(comNome) } : null,
       lista: a.lista.map((x) => ({ id: x.id, tier: x.tier, nome: (aprimoramentos.get(x.id) || {}).nome || x.nome })).filter((x) => x.nome),
     };
   }
-  return { modo: NOME_MODO[partida.modo] || '', tituloMelhores: aram ? `Melhores campeões  ·  ${NOME_MODO[partida.modo] || 'ARAM'}` : 'Melhores para este time', leitura, melhores, desordem };
+  return { modo: NOME_MODO[partida.modo] || '', tituloMelhores: aram ? `Melhores campeões  ·  ${NOME_MODO[partida.modo] || 'ARAM'}` : 'Melhores para este time', leitura, melhores, desordem, itens, jogo: resumoDoJogo() };
 }
 
 // as cartas que podem estar na tela agora, com a nota de cada uma: o cartas.ps1 le os nomes na tela e desenha por cima

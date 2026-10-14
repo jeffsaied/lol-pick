@@ -2,7 +2,7 @@
 // node --test
 const test = require('node:test');
 const assert = require('node:assert');
-const { perfilDe, lerConfrontos, sugerir } = require('./sugestao');
+const { perfilDe, lerConfrontos, sugerir, descrever } = require('./sugestao');
 
 const ficha = (id, name, roles, dano, atk, dur, cc, mob) => ({
   id, name, alias: name.replace(/\W/g, ''), roles,
@@ -87,6 +87,12 @@ test('nos modos ARAM o tier do campeao entra na conta', () => {
   const r = sugerir({ ...base, pool: [4, 5, 7], tiers: new Map([[4, 1], [5, 3], [7, 5]]), ondeTier: 'ARAM: Desordem' });
   assert.deepStrictEqual(r.champs, [4]); // Lux (tier 3) nao ganha nada e Garen (tier 5) perde ponto
   assert.deepStrictEqual(r.motivos[4], ['tier 1 no ARAM: Desordem']);
+});
+
+test('descricao do time adversario', () => {
+  assert.deepStrictEqual(descrever([2, 3, 4, 6, 7], champs, perfis), ['5 de dano físico', '1 tanque, 3 assassinos, 1 à distância', 'Quase tudo dano físico: armadura rende muito']);
+  assert.deepStrictEqual(descrever([1, 5, 8], champs, perfis), ['2 de dano mágico, 1 de dano misto', '1 tanque, 2 à distância']);
+  assert.deepStrictEqual(descrever([], champs, perfis), []);
 });
 
 test('campeao sem perfil carregado ainda entra pela classe', () => {
