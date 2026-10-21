@@ -12,6 +12,10 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
+import android.view.View;
+import android.net.Uri;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.LinearLayout;
@@ -36,6 +40,7 @@ public class MainActivity extends Activity {
     private Switch swAceitar, swRunas, swAvisos, swFixo;
     private boolean pintando; // evita mandar ao PC quando so estamos mostrando o que ele disse
     private boolean visivel;
+    private Button alerta; // aparece se os avisos estiverem bloqueados (permissao ou economia de bateria)
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -111,6 +116,9 @@ public class MainActivity extends Activity {
         l.addView(texto("PICK AUTOMÁTICO", 13, OURO, true));
         status = texto("Procurando o PC…", 24, TEXTO, true); status.setPadding(0, dp(8), 0, dp(4)); l.addView(status);
         detalhe = texto(c.pc.replace("http://", ""), 14, FRACO, false); l.addView(detalhe);
+        alerta = botao("", false);
+        alerta.setTextColor(VERMELHO); alerta.setVisibility(View.GONE);
+        l.addView(alerta, margem(0, 16));
 
         LinearLayout cartao = new LinearLayout(this);
         cartao.setOrientation(LinearLayout.VERTICAL);
@@ -145,6 +153,7 @@ public class MainActivity extends Activity {
         pedirPermissaoAvisos();
         AvisosService.ligar(this);
         atualizar();
+        conferirAvisos();
     }
 
     private Switch chave(LinearLayout pai, String titulo, String sub, String campo) {
@@ -243,7 +252,24 @@ public class MainActivity extends Activity {
         }
     }
 
-    @Override protected void onResume() { super.onResume(); visivel = true; if (status != null) atualizar(); }
+    @Override protected void onResume() { super.onResume(); visivel = true; if (status != null) { atualizar(); conferirAvisos(); } }
+
+    /** Sem permissao de notificacao, ou com a economia de bateria cortando a conexao, os avisos nao chegam: avisa e leva ao ajuste. */
+    private void conferirAvisos() {
+        if (alerta == null) return;
+        boolean semPermissao = Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED;
+        PowerManager pm = getSystemService(PowerManager.class);
+        boolean bateria = pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName());
+        if (semPermissao) {
+            alerta.setText("Notificações bloqueadas: toque para permitir");
+            alerta.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName())));
+            alerta.setVisibility(View.VISIBLE);
+        } else if (bateria) {
+            alerta.setText("Para os avisos chegarem com a tela apagada, toque e permita rodar sem economia de bateria");
+            alerta.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + getPackageName()))));
+            alerta.setVisibility(View.VISIBLE);
+        } else alerta.setVisibility(View.GONE);
+    }
     @Override protected void onPause() { super.onPause(); visivel = false; ui.removeCallbacks(laco); }
 
     @Override protected void onActivityResult(int req, int res, Intent data) {

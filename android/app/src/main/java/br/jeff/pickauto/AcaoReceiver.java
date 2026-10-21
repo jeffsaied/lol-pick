@@ -12,11 +12,12 @@ import org.json.JSONObject;
 public class AcaoReceiver extends BroadcastReceiver {
     @Override public void onReceive(Context c, Intent i) {
         PendingResult fim = goAsync();
-        String url = i.getStringExtra("url"), metodo = i.getStringExtra("metodo"), rotulo = i.getStringExtra("rotulo");
+        String url = Conexao.noPcAtual(c, i.getStringExtra("url")), metodo = i.getStringExtra("metodo"), rotulo = i.getStringExtra("rotulo");
         int aviso = i.getIntExtra("aviso", 0);
         new Thread(() -> {
             String resultado;
             try {
+                if (url == null) throw new IllegalStateException("endereço que não é do PC");
                 JSONObject r = Conexao.pedir(metodo == null ? "POST" : metodo, url, "{}");
                 resultado = r.optBoolean("ok") ? rotulo + ": feito" : rotulo + ": não deu (" + r.optString("erro", "erro") + ")";
             } catch (Exception e) {

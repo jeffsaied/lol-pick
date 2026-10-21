@@ -59,6 +59,15 @@ final class Conexao {
         if (!pc.equals(atual.pc)) prefs(c).edit().putString("pc", pc).apply();
     }
 
+    /** Botao de aviso: so vale se apontar para o PC conectado (mesma chave); vai para o endereco atual dele. */
+    static String noPcAtual(Context c, String link) {
+        Conexao atual = ler(c);
+        if (atual == null || link == null) return null;
+        Uri u = Uri.parse(link);
+        if (!atual.chave.equals(u.getQueryParameter("k")) || u.getPath() == null) return null;
+        return atual.pc + u.getPath() + "?k=" + Uri.encode(atual.chave);
+    }
+
     static String ultimoAviso(Context c) { return prefs(c).getString("ultimo", null); }
     static void guardarUltimo(Context c, String id) { prefs(c).edit().putString("ultimo", id).apply(); }
 
