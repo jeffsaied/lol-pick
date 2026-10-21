@@ -145,7 +145,7 @@ function Pedir($caminho, [switch]$Post) {
     </Border>
     </StackPanel>
   </Border>
-  <Path x:Name="Contorno" Stroke="#C8AA6E" StrokeThickness="1.5" IsHitTestVisible="False"/>
+  <Canvas IsHitTestVisible="False"><Path x:Name="Contorno" Stroke="#C8AA6E" StrokeThickness="1.5"/></Canvas>
   </Grid>
   </Grid>
 </Window>
