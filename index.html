@@ -69,6 +69,7 @@
   #dado { margin-top: 12px; width: 100%; padding: 13px; border-radius: 12px; background: var(--painel); border: 1px solid var(--borda); font-weight: 700; }
   footer { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(180deg, transparent, var(--fundo) 30%); }
   footer > div { max-width: 640px; margin: 0 auto; }
+  #sinoBtn { flex: none; margin-right: 6px; padding: 6px 10px; border-radius: 999px; background: var(--painel); border: 1px solid var(--borda); font-size: 15px; }
   #tipoBtn { flex: none; padding: 6px 12px; border-radius: 999px; background: var(--painel); border: 1px solid var(--borda); font-size: 13px; font-weight: 600; }
   #tipos { position: fixed; inset: 0; z-index: 8; display: flex; flex-direction: column; justify-content: center; gap: 12px; padding: 24px; background: var(--fundo); }
   #tipos h1 { margin: 0 0 8px; font-size: 24px; text-align: center; }
@@ -84,7 +85,7 @@
 </style>
 </head>
 <body>
-<header><span id="ponto"></span><span id="fila">Pick Automático</span><span id="timer"></span><button id="tipoBtn">Tipo</button></header>
+<header><span id="ponto"></span><span id="fila">Pick Automático</span><span id="timer"></span><button id="sinoBtn" title="Avisos no celular">🔔</button><button id="tipoBtn">Tipo</button></header>
 <div id="toast" hidden></div>
 <div id="tipos" hidden>
   <h1>Qual partida você vai jogar?</h1>
@@ -157,6 +158,17 @@ const modoDe = (cs) => (!tipo || tipo === 'auto' ? cs.mode : (tipo === 'aram' ||
 function toast(msg) {
   $('toast').textContent = msg; $('toast').hidden = false;
   clearTimeout(toastT); toastT = setTimeout(() => { $('toast').hidden = true; }, 3500);
+}
+
+// o sino: liga/desliga os avisos do ntfy (vale para todos os celulares ligados ao PC)
+let sinoLigado = true;
+function pintarSino() { $('sinoBtn').textContent = sinoLigado ? '🔔' : '🔕'; $('sinoBtn').style.opacity = sinoLigado ? 1 : 0.5; }
+async function lerSino(ligar) {
+  try {
+    const r = await fetch('/api/celular?k=' + encodeURIComponent(K), ligar === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ligado: ligar }) });
+    sinoLigado = !!(await r.json()).ligado; pintarSino();
+    if (ligar !== undefined) toast(sinoLigado ? 'Avisos no celular ligados' : 'Avisos no celular desligados');
+  } catch { if (ligar !== undefined) toast('Sem conexão com o PC'); }
 }
 
 async function api(cmd, corpo) {
@@ -362,6 +374,8 @@ function ligar() {
 }
 if (!K) $('parado').innerHTML = '<b>Sem chave</b>Abra pelo link do aviso do ntfy.';
 else { render(); ligar(); $('tipos').hidden = false; }
+$('sinoBtn').onclick = () => lerSino(!sinoLigado);
+lerSino();
 </script>
 </body>
 </html>

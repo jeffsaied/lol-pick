@@ -26,6 +26,7 @@ function loadConfig() {
     aceitarSozinho: true, // o botao ON/OFF do painel do PC
     painelFixo: false, // o clipe do painel: fica aberto em vez de virar bolinha
     puxarRunas: true, // monta a pagina de runas do campeao escolhido
+    avisarCelular: true, // o sino: manda (ou nao) os avisos para o celular pelo ntfy
     configurado: false,
   };
   let cfg = {};
@@ -185,7 +186,9 @@ function nomeDe(p) {
 
 // ---------- ntfy ----------
 function avisar(titulo, mensagem, extra) {
-  if (!cfg.topic) return;
+  const { sempre, ...resto } = extra || {}; // sempre: o teste do aviso manda mesmo com o sino desligado
+  if (!cfg.topic || (!cfg.avisarCelular && !sempre)) return;
+  extra = resto;
   fetch(cfg.ntfyServer, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -679,11 +682,12 @@ const servidor = http.createServer(async (req, res) => {
   if (noPC && rota === '/api/pc') {
     if (req.method === 'POST') {
       const acao = url.searchParams.get('acao');
-      if (acao === 'teste') avisar('Teste do Pick Automático', 'Se você está lendo isto, o aviso funciona.', { priority: 4, tags: ['bell'] });
+      if (acao === 'teste') avisar('Teste do Pick Automático', 'Se você está lendo isto, o aviso funciona.', { priority: 4, tags: ['bell'], sempre: true });
       if (acao === 'concluir') salvarConfig({ configurado: true });
       if (acao === 'auto') salvarConfig({ aceitarSozinho: url.searchParams.get('ligado') === '1' }); // botao do painel (hud.ps1)
       if (acao === 'fixo') salvarConfig({ painelFixo: url.searchParams.get('ligado') === '1' }); // clipe do painel
       if (acao === 'runas') salvarConfig({ puxarRunas: url.searchParams.get('ligado') === '1' });
+      if (acao === 'celular') salvarConfig({ avisarCelular: url.searchParams.get('ligado') === '1' }); // o sino do painel
       if (acao === 'desligar') setTimeout(() => process.exit(0), 200); // pedido do parar.bat
       return json(res, 200, { ok: true });
     }
@@ -692,7 +696,7 @@ const servidor = http.createServer(async (req, res) => {
       celulares: [...clientes].filter((c) => c.deFora).length,
       vincular: `${BASE}/vincular?k=${cfg.key}`, lido: qrLido,
       // para o painel do PC (hud.ps1)
-      aceitarSozinho: !!cfg.aceitarSozinho, painelFixo: !!cfg.painelFixo, puxarRunas: !!cfg.puxarRunas, runas: estado.phase === 'ChampSelect' ? runasAviso : '', lol: !!estado.lol, phase: estado.phase, fila: estado.fila || '', aceito: !!estado.aceito,
+      aceitarSozinho: !!cfg.aceitarSozinho, painelFixo: !!cfg.painelFixo, puxarRunas: !!cfg.puxarRunas, avisarCelular: !!cfg.avisarCelular, runas: estado.phase === 'ChampSelect' ? runasAviso : '', lol: !!estado.lol, phase: estado.phase, fila: estado.fila || '', aceito: !!estado.aceito,
       pagina: `http://localhost:${cfg.port}/?k=${cfg.key}`,
       ...paraOPainel(),
     });
@@ -734,6 +738,12 @@ const servidor = http.createServer(async (req, res) => {
   }
 
   if (rota === '/api/champions') return json(res, 200, [...champs.values()]);
+
+  // o sino da pagina do celular: liga/desliga os avisos pelo ntfy
+  if (rota === '/api/celular') {
+    if (req.method === 'POST') salvarConfig({ avisarCelular: !!(await lerCorpo(req)).ligado });
+    return json(res, 200, { ok: true, ligado: !!cfg.avisarCelular });
+  }
 
   const cmd = rota.match(/^\/api\/(\w+)$/);
   if (cmd && req.method === 'POST' && Object.prototype.hasOwnProperty.call(comandos, cmd[1])) {

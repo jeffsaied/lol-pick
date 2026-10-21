@@ -82,6 +82,8 @@ function Pedir($caminho, [switch]$Post) {
       </Grid>
       <TextBlock x:Name="Fechar" Text="✕" Foreground="#A09B8C" FontSize="13" Cursor="Hand" ToolTip="Fechar (desliga o Pick Automático)"
                  HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,7,11,0"/>
+      <TextBlock x:Name="Sino" Text="&#x1F514;" FontFamily="Segoe UI Emoji" Foreground="#F0E6D2" FontSize="13" Cursor="Hand"
+                 ToolTip="Avisos no celular: clique para ligar ou desligar" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,30,0"/>
       <TextBlock x:Name="Clipe" Text="&#x1F4CC;" FontFamily="Segoe UI Emoji" Foreground="#5B6577" FontSize="13" Cursor="Hand"
                  ToolTip="Manter o painel aberto (não virar bolinha)" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
       <TextBlock x:Name="Ajuda" Text="?" Foreground="#C8AA6E" FontSize="14" FontWeight="Bold" Cursor="Hand" ToolTip="Mostrar ou esconder as opções"
@@ -287,6 +289,8 @@ function Atualizar {
     else { $detalhe.Text = 'Você aceita pelo celular' }
     if ($e.fila -and $e.phase -ne 'None') { $detalhe.Text += "  ·  $($e.fila)" }
     if ($e.runas) { $detalhe.Text = [string]$e.runas }
+    if ($e.avisarCelular) { $sino.Text = [char]::ConvertFromUtf32(0x1F514); $sino.Opacity = 1; $sino.ToolTip = 'Avisos no celular: LIGADOS (clique para desligar)' }
+    else { $sino.Text = [char]::ConvertFromUtf32(0x1F515); $sino.Opacity = 0.5; $sino.ToolTip = 'Avisos no celular: desligados (clique para ligar)' }
     $ligarRunas.Text = if ($e.puxarRunas) { 'Runas automáticas: LIGADAS (clique para desligar)' } else { 'Runas automáticas: desligadas (clique para ligar)' }
     Mostrar-Aram $e
 }
@@ -296,6 +300,7 @@ $compacto = $false
 $fixo = $false # o clipe: preso, o painel nao vira bolinha
 $clipe = $win.FindName('Clipe')
 $ligarRunas = $win.FindName('LigarRunas')
+$sino = $win.FindName('Sino')
 $ultimoMexer = Get-Date
 $ultimaPos = ''
 function Compactar($sim) {
@@ -331,6 +336,13 @@ $clipe.Add_MouseLeftButtonDown({
     $script:ultimoMexer = Get-Date
     if ($script:fixo) { $ligado = 0 } else { $ligado = 1 }
     [void](Pedir "/api/pc?acao=fixo&ligado=$ligado" -Post)
+    Atualizar
+})
+$sino.Add_MouseLeftButtonDown({
+    $_.Handled = $true
+    $script:ultimoMexer = Get-Date
+    if ($script:estado -and $script:estado.avisarCelular) { $ligado = 0 } else { $ligado = 1 }
+    [void](Pedir "/api/pc?acao=celular&ligado=$ligado" -Post)
     Atualizar
 })
 $ligarRunas.Add_MouseLeftButtonDown({
