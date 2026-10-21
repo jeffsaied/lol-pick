@@ -12,3 +12,9 @@ node_modules/
 confrontos-site.json
 # tiers e aprimoramentos baixados do op.gg
 desordem-site.json
+
+# app Android: so o codigo e o .apk final vao para o git
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties

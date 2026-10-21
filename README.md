@@ -7,7 +7,7 @@ Um programinha fica rodando no PC onde o LoL está aberto. Quando a fila acha pa
 ## O que faz
 
 - **Aceita a partida sozinho** quando a fila encontra. Um painel no canto da tela do PC tem o botão: verde **ON** aceita sozinho, um clique vira vermelho **OFF** e você volta a aceitar pelo celular.
-- **Aviso de partida encontrada** pelo [ntfy](https://ntfy.sh), com botão de aceitar quando o aceitar sozinho está desligado.
+- **App Android próprio** (`app\PickAutomatico.apk`): avisa "partida encontrada" em qualquer rede (Wi-Fi ou 4G), com botão de aceitar, e tem as mesmas opções do painel do PC (aceitar sozinho, runas, avisos e painel fixo). No iPhone, o Pick Automático é o site, aberto no mesmo Wi-Fi do PC.
 - **Normal:** caixa de busca com a foto dos campeões, em ordem alfabética, filtrando a cada letra.
 - **Ranqueada / Flex:** a mesma caixa para banir e depois para escolher. Campeão banido ou já pego fica apagado.
 - **ARAM / ARAM: Desordem:** mostra o campeão que veio para você, as opções e o banco do time; cada toque troca na hora.
@@ -30,13 +30,12 @@ Um programinha fica rodando no PC onde o LoL está aberto. Quando a fila acha pa
 
 1. Baixe o projeto (botão **Code → Download ZIP**) e extraia numa pasta.
 2. Clique duas vezes em `iniciar.bat`. Na primeira vez o Windows pede permissão para liberar a porta 8787 no firewall.
-3. O navegador abre uma tela com três QR codes. Leia cada um com a câmera do celular:
-   1. baixar o app ntfy;
-   2. ligar o ntfy ao seu PC (depois de ler, mande o aviso de teste);
-   3. abrir a página e adicioná-la à tela inicial (menu ⋮ → Adicionar à tela inicial).
+3. O navegador abre a tela de ligar o celular. Escolha **Android** ou **iPhone**:
+   - **Android:** leia o 1º QR com a câmera para baixar e instalar o app (o Android pede para permitir instalar desta fonte). Abra o app, toque em **Escanear o QR do PC** e leia o 2º QR. Pronto: os avisos chegam no app.
+   - **iPhone:** leia o QR, abra o site e toque em Compartilhar → **Adicionar à Tela de Início**.
 4. A janela avisa que ligou e fecha sozinha em 5 segundos: o programa continua rodando escondido. Para desligar, clique em `parar.bat`. Na primeira vez ele cria o atalho **Pick Automático**, com ícone, nesta pasta e na Área de Trabalho: nas próximas vezes é só clicar nele.
 
-Para ver os QR codes de novo (celular novo), use `configurar.bat`.
+Para ver os QR codes de novo (celular novo), use `configurar.bat` ou, no painel do PC, **?** → **Ligar um celular**.
 
 ## Confrontos (counters)
 
@@ -79,7 +78,8 @@ Se alguma coisa falhar (o site dos confrontos mudou, o LoL passou a responder di
 
 ## Limites conhecidos
 
-- Só funciona com o celular na mesma rede do PC.
+- Aceitar pelo botão do aviso, mudar as opções e escolher o campeão só funcionam com o celular na mesma rede do PC. Os avisos do app chegam em qualquer rede.
+- No iPhone não há aviso com o site fechado (o iPhone só deixa site mandar aviso com endereço seguro, https).
 - As "cartas" do ARAM (as 2 ou 3 opções de campeão) ainda não foram confirmadas numa partida real e podem não aparecer; o banco e a troca funcionam.
 - O navegador não deixa adicionar à tela inicial sozinho: é um toque seu.
 

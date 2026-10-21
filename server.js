@@ -55,6 +55,8 @@ function ipLocal() {
 }
 const BASE = `http://${ipLocal()}:${cfg.port}`;
 const LINK = `${BASE}/?k=${cfg.key}`;
+const APK = path.join(DIR, 'app', 'PickAutomatico.apk'); // o app Android, quando gerado
+let appVisto = 0; // ultima vez que o app falou com o PC
 
 // ---------- cliente do LoL (LCU) ----------
 let creds = null;
@@ -695,6 +697,9 @@ const servidor = http.createServer(async (req, res) => {
       link: LINK, topic: cfg.topic, ntfyHost: new URL(cfg.ntfyServer).host,
       celulares: [...clientes].filter((c) => c.deFora).length,
       vincular: `${BASE}/vincular?k=${cfg.key}`, lido: qrLido,
+      // QR do app Pick Automatico (Android): o app le e guarda tudo para falar com este PC e com o ntfy
+      conectarApp: `pickauto://conectar?u=${encodeURIComponent(BASE)}&k=${cfg.key}&t=${cfg.topic}&s=${encodeURIComponent(cfg.ntfyServer)}`,
+      baixarApp: fs.existsSync(APK) ? `${BASE}/app.apk?k=${cfg.key}` : '', appVisto: !!appVisto,
       // para o painel do PC (hud.ps1)
       aceitarSozinho: !!cfg.aceitarSozinho, painelFixo: !!cfg.painelFixo, puxarRunas: !!cfg.puxarRunas, avisarCelular: !!cfg.avisarCelular, runas: estado.phase === 'ChampSelect' ? runasAviso : '', lol: !!estado.lol, phase: estado.phase, fila: estado.fila || '', aceito: !!estado.aceito,
       pagina: `http://localhost:${cfg.port}/?k=${cfg.key}`,
@@ -738,6 +743,27 @@ const servidor = http.createServer(async (req, res) => {
   }
 
   if (rota === '/api/champions') return json(res, 200, [...champs.values()]);
+
+  // o app Android: baixar o .apk e ler/mudar as mesmas opcoes do painel do PC
+  if (rota === '/app.apk') {
+    if (!fs.existsSync(APK)) return json(res, 404, { ok: false, erro: 'O app ainda nao foi gerado neste PC' });
+    res.writeHead(200, { 'Content-Type': 'application/vnd.android.package-archive', 'Content-Disposition': 'attachment; filename="PickAutomatico.apk"' });
+    return res.end(fs.readFileSync(APK));
+  }
+  if (rota === '/api/app') {
+    appVisto = Date.now();
+    if (req.method === 'POST') {
+      const corpo = await lerCorpo(req);
+      if (corpo.acao === 'teste') avisar('Teste do Pick Automático', 'Se você está lendo isto, o app recebe os avisos.', { priority: 4, tags: ['bell'], sempre: true });
+      const mudou = {};
+      for (const k of ['aceitarSozinho', 'puxarRunas', 'avisarCelular', 'painelFixo']) if (typeof corpo[k] === 'boolean') mudou[k] = corpo[k];
+      if (Object.keys(mudou).length) salvarConfig(mudou);
+    }
+    return json(res, 200, {
+      ok: true, versao: VERSAO, aceitarSozinho: !!cfg.aceitarSozinho, puxarRunas: !!cfg.puxarRunas, avisarCelular: !!cfg.avisarCelular, painelFixo: !!cfg.painelFixo,
+      lol: !!estado.lol, phase: estado.phase, fila: estado.fila || '', aceito: !!estado.aceito, pagina: LINK,
+    });
+  }
 
   // o sino da pagina do celular: liga/desliga os avisos pelo ntfy
   if (rota === '/api/celular') {
