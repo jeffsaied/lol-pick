@@ -729,7 +729,7 @@ const servidor = http.createServer(async (req, res) => {
 <script>location.href = ${JSON.stringify(alvo)};</script></body></html>`);
   }
 
-  if (!comChave) return json(res, 403, { ok: false, erro: 'Chave errada: abra pelo link do aviso do ntfy' });
+  if (!comChave) return json(res, 403, { ok: false, erro: 'Chave errada: abra pelo app ou pelo QR do PC' });
 
   if (rota === '/manifest.webmanifest') {
     return json(res, 200, {
@@ -794,7 +794,7 @@ setInterval(() => { for (const c of clientes) c.write(': ping\n\n'); }, 20000);
 servidor.listen(cfg.port, '0.0.0.0', () => {
   console.log('Pick Automatico ligado.');
   console.log('  Pagina do celular: ' + LINK);
-  console.log('  Topico do ntfy:    ' + (cfg.topic || '(desligado)'));
+  console.log('  Canal dos avisos:  ' + (cfg.topic || '(desligado)'));
   avisar('Pick Automático ligado', 'Toque para abrir a página no celular', { priority: 2, tags: ['white_check_mark'] });
   if ((!cfg.configurado || process.env.LOLPICK_CONFIGURAR) && !process.env.LOLPICK_SEM_NTFY) {
     require('child_process').exec(`start "" "http://localhost:${cfg.port}/pc"`);

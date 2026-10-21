@@ -164,7 +164,7 @@ function toast(msg) {
   clearTimeout(toastT); toastT = setTimeout(() => { $('toast').hidden = true; }, 3500);
 }
 
-// o sino: liga/desliga os avisos do ntfy (vale para todos os celulares ligados ao PC)
+// o sino: liga/desliga os avisos do app (vale para todos os celulares ligados ao PC)
 let sinoLigado = true;
 function pintarSino() { $('sinoBtn').textContent = sinoLigado ? '🔔' : '🔕'; $('sinoBtn').style.opacity = sinoLigado ? 1 : 0.5; }
 async function lerSino(ligar) {
@@ -377,7 +377,7 @@ function ligar() {
   };
   es.onerror = () => { $('ponto').className = ''; };
 }
-if (!K) $('parado').innerHTML = '<b>Sem chave</b>Abra pelo link do aviso do ntfy.';
+if (!K) $('parado').innerHTML = '<b>Sem chave</b>Abra pelo app Pick Automático ou pelo QR do PC.';
 else { render(); ligar(); $('tipos').hidden = false; }
 $('sinoBtn').onclick = () => lerSino(!sinoLigado);
 lerSino();
