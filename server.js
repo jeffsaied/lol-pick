@@ -286,6 +286,8 @@ function montarSelecao(s, opcoes) {
     acao: acao(atual), plano: acao(plano),
     eu: { champ: mim.champ, locked: mim.locked },
     banco, opcoes: ops, rerolls: s.rerollsRemaining || 0,
+    // ARAM: a colocacao de cada campeao no ranking do modo (op.gg), para mostrar em cima da foto
+    lugares: aram ? Object.fromEntries(pool.map((id) => [id, (opgg.campeao(partida.modo, id) || {}).lugar || 0])) : {},
     sugestao: mim.locked && !aram ? { falta: [], leitura: [], champs: [], motivos: {} } : dica.sugerir({
       aliados: meuTime.filter((p) => !p.me).map((p) => p.champ || p.intent).filter(Boolean),
       inimigos: inimigos.map((p) => p.champ).filter(Boolean),
@@ -581,8 +583,13 @@ function cartasNaTela() {
       tipo: 'campeoes',
       itens: ids.map((id) => {
         const c = opgg.campeao(partida.modo, id);
-        return { nome: nome(id), tier: c ? c.tier : null, ordem: c ? c.lugar || 500 : 999, rotulo: c ? `T${c.tier}  ·  ${c.lugar}º` : 'sem dados' };
+        return { nome: nome(id), tier: c ? c.tier : null, ordem: c ? c.lugar || 500 : 999, rotulo: c ? `T${c.tier}  ·  ${c.lugar}º` : 'sem dados', eu: id === cs.eu.champ };
       }).filter((x) => x.nome),
+      // os icones do banco (fileira de cima), na ordem da tela: o numero de cada um no ranking do modo
+      banco: cs.banco.map((id) => {
+        const c = opgg.campeao(partida.modo, id);
+        return { rotulo: c && c.lugar ? `${c.lugar}º` : '—', tier: c ? c.tier : null };
+      }),
     };
   }
   if (partida.modo === 'desordem' && ['GameStart', 'InProgress', 'Reconnect'].includes(estado.phase)) {

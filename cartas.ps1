@@ -217,7 +217,7 @@ function Cor-Tier($tier) {
     if ($null -eq $tier) { return '#A09B8C' }
     switch ([int]$tier) { 0 { '#FF6B81' } 1 { '#F5A623' } 2 { '#5BC0EB' } 3 { '#C8D0D8' } default { '#E0475A' } }
 }
-function Desenhar($cartas, $forma, $altJanela) {
+function Desenhar($cartas, $forma, $altJanela, $banco) {
     $quadro.Children.Clear()
     if (-not $cartas.Count) { return }
     $largura = $forma.Largura * $altJanela
@@ -238,12 +238,14 @@ function Desenhar($cartas, $forma, $altJanela) {
         $x = $c.CX - $largura / 2
         if ($forma.TopoJ) { $y = $baseY - $forma.TopoJ * $altJanela; $altura = $forma.AlturaJ * $altJanela }
         else { $y = $baseY - $forma.Topo * $largura; $altura = $forma.Altura * $largura }
-        $borda = New-Object Windows.Shapes.Rectangle
-        $borda.Width = $largura; $borda.Height = $altura
-        $borda.RadiusX = 14; $borda.RadiusY = 14
-        $borda.Stroke = $Pincel.ConvertFromString($cor); $borda.StrokeThickness = if ($eMelhor) { 6 } else { 2 }
-        [Windows.Controls.Canvas]::SetLeft($borda, $x); [Windows.Controls.Canvas]::SetTop($borda, $y)
-        [void]$quadro.Children.Add($borda)
+        if ($forma.Processo -ne 'LeagueClientUx') { # na selecao de campeoes fica so o selo, sem moldura em volta da carta
+            $borda = New-Object Windows.Shapes.Rectangle
+            $borda.Width = $largura; $borda.Height = $altura
+            $borda.RadiusX = 14; $borda.RadiusY = 14
+            $borda.Stroke = $Pincel.ConvertFromString($cor); $borda.StrokeThickness = if ($eMelhor) { 6 } else { 2 }
+            [Windows.Controls.Canvas]::SetLeft($borda, $x); [Windows.Controls.Canvas]::SetTop($borda, $y)
+            [void]$quadro.Children.Add($borda)
+        }
 
         $selo = New-Object Windows.Controls.Border
         $selo.Background = $Pincel.ConvertFromString('#E60A1428'); $selo.BorderBrush = $Pincel.ConvertFromString($cor); $selo.BorderThickness = 2
@@ -255,6 +257,33 @@ function Desenhar($cartas, $forma, $altJanela) {
         $selo.Child = $txt
         $alturaSelo = $txt.FontSize + 22
         [Windows.Controls.Canvas]::SetLeft($selo, $x); [Windows.Controls.Canvas]::SetTop($selo, [Math]::Max(0, $y - $alturaSelo - 4))
+        [void]$quadro.Children.Add($selo)
+    }
+    if ($banco) { Desenhar-Banco $cartas $largura $banco }
+}
+
+# Os icones do banco do ARAM (fileira de cima) nao tem nome escrito: a posicao sai da carta do proprio
+# jogador, que foi lida. Medidas de um print real, em fracao da largura da carta (184 px na janela de 720):
+# 1o icone a 1,511 larguras a esquerda do meio da carta, um a cada 0,319; lado 0,266; topo 2,511 acima do nome.
+function Desenhar-Banco($cartas, $largura, $banco) {
+    $minha = @($cartas | Where-Object { $_.Item.eu }) | Select-Object -First 1
+    if (-not $minha) { return }
+    $lado = 0.266 * $largura
+    $topo = $minha.CY - 2.511 * $largura
+    $i = 0
+    foreach ($b in @($banco)) {
+        $x = $minha.CX + $largura * (-1.511 + 0.3193 * $i)
+        $i++
+        if ([string]$b.rotulo -eq '—') { continue }
+        $cor = Cor-Tier $b.tier
+        $selo = New-Object Windows.Controls.Border
+        $selo.Background = $Pincel.ConvertFromString('#E60A1428'); $selo.BorderBrush = $Pincel.ConvertFromString($cor); $selo.BorderThickness = 1.5
+        $selo.CornerRadius = 5; $selo.Padding = '0,1'; $selo.Width = $lado
+        $txt = New-Object Windows.Controls.TextBlock
+        $txt.Text = [string]$b.rotulo; $txt.Foreground = $Pincel.ConvertFromString($cor)
+        $txt.FontSize = [Math]::Max(10, [Math]::Round($lado / 3.6)); $txt.FontWeight = 'Bold'; $txt.TextAlignment = 'Center'
+        $selo.Child = $txt
+        [Windows.Controls.Canvas]::SetLeft($selo, $x); [Windows.Controls.Canvas]::SetTop($selo, [Math]::Max(0, $topo + $lado - $txt.FontSize - 4))
         [void]$quadro.Children.Add($selo)
     }
 }
@@ -320,7 +349,7 @@ function Passo {
     $cartas = @($cartas | Where-Object { $x = $_.CX + $o.X; $y = $_.CY + $o.Y; -not ($x -ge $p[0] -and $x -le $p[2] -and $y -ge $p[1] -and $y -le $p[3]) })
     $cartas = @(Arrumar-Cartas $cartas $forma $h)
     # a posicao da janela entra na conta: se o jogo for arrastado, as cartas continuam no mesmo lugar dentro dele
-    $sig = "$($o.X),$($o.Y),$w,$h|" + (($cartas | ForEach-Object { "$($_.Item.chave)@$([int]($_.CX / 8)),$([int]($_.CY / 8))" }) -join '|')
+    $sig = "$($o.X),$($o.Y),$w,$h|" + (($cartas | ForEach-Object { "$($_.Item.chave)@$([int]($_.CX / 8)),$([int]($_.CY / 8))" }) -join '|') + '|' + ((@($d.banco) | ForEach-Object { $_.rotulo }) -join ',')
     if ($sig -eq $script:assinatura) { $script:relendo = $false; return }
     # A foto da tela inclui o nosso proprio desenho. Se a leitura mudou e veio incompleta com desenho na tela,
     # pode ser uma moldura velha tampando um nome: apaga tudo e le de novo, limpo, no proximo passo.
@@ -331,7 +360,7 @@ function Passo {
     $script:relendo = $false
     $script:assinatura = $sig
     $win.Left = $o.X; $win.Top = $o.Y; $win.Width = $w; $win.Height = $h
-    Desenhar $cartas $forma $h
+    Desenhar $cartas $forma $h $d.banco
 }
 
 # Modo de conferencia: le uma foto guardada em vez da tela e so escreve o que achou.

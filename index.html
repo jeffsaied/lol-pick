@@ -62,6 +62,8 @@
   .ch.sel img { border-color: var(--ouro); box-shadow: 0 0 0 3px rgba(200,170,110,.35); }
   .ch.off { opacity: .28; pointer-events: none; }
   .ch.dica img { border-color: var(--azul); }
+  .ch { position: relative; }
+  .ch .lugar { position: absolute; top: 4px; left: 4px; padding: 1px 6px; border-radius: 8px; background: rgba(10,16,24,.88); color: var(--ouro); font-size: 11px; font-weight: 800; }
   #meu { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 16px; background: var(--painel); border: 2px solid var(--ouro); }
   #meu img { width: 96px; height: 96px; border-radius: 14px; flex: none; }
   #meu small { display: block; color: var(--fraco); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
@@ -209,8 +211,9 @@ function jogador(p, inimigo) {
     `<small class="c">${esc(id ? nome(id) : '—')}</small><small>${esc(quem)}</small></div>`;
 }
 
-function botaoCh(id, extra) {
-  return `<button class="ch ${extra || ''}" data-id="${id}">${foto(id)}<span>${esc(nome(id))}</span></button>`;
+function botaoCh(id, extra, lugar) {
+  const selo = lugar ? `<b class="lugar">${lugar}º</b>` : '';
+  return `<button class="ch ${extra || ''}" data-id="${id}">${selo}${foto(id)}<span>${esc(nome(id))}</span></button>`;
 }
 
 function renderGrade(cs, alvo) {
@@ -269,7 +272,7 @@ function renderAram(cs) {
   const sug = cs.sugestao;
   const dica = new Set(sug.champs.filter((c) => (sug.motivos || {})[c]));
   $('dicaAram').textContent = dica.size ? [situacao(sug), 'Os de borda azul ajudam', porque(sug, melhorCom(sug))].filter(Boolean).join(' · ') : '';
-  const lista = (ids) => ids.map((c) => botaoCh(c, dica.has(c) ? 'dica' : '')).join('');
+  const lista = (ids) => ids.map((c) => botaoCh(c, dica.has(c) ? 'dica' : '', (cs.lugares || {})[c])).join('');
   $('tOpcoes').hidden = $('opcoes').hidden = !cs.opcoes.length;
   $('opcoes').innerHTML = lista(cs.opcoes);
   $('tBanco').hidden = false;
