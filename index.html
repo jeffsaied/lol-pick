@@ -63,7 +63,9 @@
   .ch.off { opacity: .28; pointer-events: none; }
   .ch.dica img { border-color: var(--azul); }
   .ch { position: relative; }
-  .ch .lugar { position: absolute; top: 4px; left: 4px; padding: 1px 6px; border-radius: 8px; background: rgba(10,16,24,.88); color: var(--ouro); font-size: 11px; font-weight: 800; }
+  /* a colocacao no ranking: no meio da foto, centralizada */
+  .ch .lugar { position: absolute; top: 0; left: 0; width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  .ch .lugar i { font-style: normal; padding: 2px 8px; border-radius: 8px; background: rgba(10,16,24,.82); color: var(--ouro); font-size: 13px; font-weight: 800; }
   #meu { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 16px; background: var(--painel); border: 2px solid var(--ouro); }
   #meu img { width: 96px; height: 96px; border-radius: 14px; flex: none; }
   #meu small { display: block; color: var(--fraco); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
@@ -212,7 +214,7 @@ function jogador(p, inimigo) {
 }
 
 function botaoCh(id, extra, lugar) {
-  const selo = lugar ? `<b class="lugar">${lugar}º</b>` : '';
+  const selo = lugar ? `<b class="lugar"><i>${lugar}º</i></b>` : '';
   return `<button class="ch ${extra || ''}" data-id="${id}">${selo}${foto(id)}<span>${esc(nome(id))}</span></button>`;
 }
 

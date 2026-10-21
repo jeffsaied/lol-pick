@@ -283,7 +283,8 @@ function Desenhar-Banco($cartas, $largura, $banco) {
         $txt.Text = [string]$b.rotulo; $txt.Foreground = $Pincel.ConvertFromString($cor)
         $txt.FontSize = [Math]::Max(10, [Math]::Round($lado / 3.6)); $txt.FontWeight = 'Bold'; $txt.TextAlignment = 'Center'
         $selo.Child = $txt
-        [Windows.Controls.Canvas]::SetLeft($selo, $x); [Windows.Controls.Canvas]::SetTop($selo, [Math]::Max(0, $topo + $lado - $txt.FontSize - 4))
+        # no meio do icone, centralizado nos dois sentidos
+        [Windows.Controls.Canvas]::SetLeft($selo, $x); [Windows.Controls.Canvas]::SetTop($selo, [Math]::Max(0, $topo + ($lado - ($txt.FontSize * 1.33 + 5)) / 2))
         [void]$quadro.Children.Add($selo)
     }
 }
