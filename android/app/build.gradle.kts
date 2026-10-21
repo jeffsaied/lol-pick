@@ -7,8 +7,8 @@ android {
         applicationId = "br.jeff.pickauto"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -25,4 +25,6 @@ android {
 
 dependencies {
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    // o leitor de QR usa o AndroidX, mas nao o traz junto: sem isto o app fecha ao abrir o leitor
+    implementation("androidx.appcompat:appcompat:1.6.1")
 }
