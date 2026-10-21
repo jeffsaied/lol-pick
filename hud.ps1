@@ -44,50 +44,67 @@ function Pedir($caminho, [switch]$Post) {
 [xml]$xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Pick Automático" Width="392" SizeToContent="Height" WindowStyle="None" AllowsTransparency="True"
+        Title="Pick Automático" Width="420" FontFamily="Bahnschrift" SizeToContent="Height" WindowStyle="None" AllowsTransparency="True"
         Background="Transparent" Topmost="True" ResizeMode="NoResize" WindowStartupLocation="Manual" ShowActivated="False">
-  <Grid>
-  <Ellipse x:Name="Bolinha" Width="35" Height="35" Fill="#1FA84A" Stroke="#F0E6D2" StrokeThickness="1.5" Visibility="Collapsed"
+  <Grid x:Name="Raiz">
+  <Ellipse x:Name="Bolinha" Width="35" Height="35" Fill="#0AC8B9" Stroke="#C8AA6E" StrokeThickness="1.5" Visibility="Collapsed"
            HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,40,55,6"/>
-  <Border x:Name="Painel" CornerRadius="14" Background="#0A1428" BorderBrush="#C8AA6E" BorderThickness="1.5" Margin="8">
-    <Border.Effect><DropShadowEffect BlurRadius="12" ShadowDepth="0" Opacity="0.7"/></Border.Effect>
+  <Grid Margin="8">
+  <Grid.Effect><DropShadowEffect BlurRadius="14" ShadowDepth="0" Opacity="0.75"/></Grid.Effect>
+  <Border x:Name="Painel" BorderThickness="0">
+    <Border.Background>
+      <LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#0B1A30" Offset="0"/><GradientStop Color="#010A13" Offset="1"/></LinearGradientBrush>
+    </Border.Background>
     <StackPanel>
-    <Grid Height="100">
-      <Grid Margin="14,12,52,12">
+    <Grid Height="104">
+      <Grid Margin="16,12,14,12">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
-        <Border Width="76" Height="76" CornerRadius="10" BorderBrush="#C8AA6E" BorderThickness="1.5">
-          <Border.Background><ImageBrush x:Name="Img" Stretch="UniformToFill"/></Border.Background>
-        </Border>
-        <StackPanel Grid.Column="1" Margin="14,0,10,0" VerticalAlignment="Center">
-          <TextBlock Text="PICK AUTOMÁTICO" Foreground="#C8AA6E" FontSize="11" FontWeight="Bold"/>
-          <TextBlock x:Name="Status" Text="..." Foreground="#F0E6D2" FontSize="17" FontWeight="SemiBold" Margin="0,3,0,3" TextTrimming="CharacterEllipsis"/>
-          <TextBlock x:Name="Detalhe" Text="" Foreground="#A09B8C" FontSize="11" TextTrimming="CharacterEllipsis"/>
+        <Path Width="70" Height="78" Stretch="Fill" Stroke="#C8AA6E" StrokeThickness="2" VerticalAlignment="Center"
+              Data="M35,0 L70,19.5 L70,58.5 L35,78 L0,58.5 L0,19.5 Z">
+          <Path.Fill><ImageBrush x:Name="Img" Stretch="UniformToFill"/></Path.Fill>
+        </Path>
+        <StackPanel Grid.Column="1" Margin="14,0,8,0" VerticalAlignment="Center">
+          <TextBlock Text="Pick Automático" Foreground="#0AC8B9" FontSize="12"/>
+          <TextBlock x:Name="Status" Text="..." Foreground="#F0E6D2" FontSize="19" FontWeight="SemiBold" Margin="0,1,0,2" TextTrimming="CharacterEllipsis"/>
+          <TextBlock x:Name="Detalhe" Text="" Foreground="#A09B8C" FontSize="12" TextTrimming="CharacterEllipsis"/>
         </StackPanel>
-        <Button x:Name="Botao" Grid.Column="2" Width="70" Height="70" Cursor="Hand" Foreground="White"
-                FontSize="18" FontWeight="Bold" Content="ON" Background="#1FA84A" ToolTip="Aceitar a partida sozinho: clique para ligar ou desligar">
-          <Button.Template>
-            <ControlTemplate TargetType="Button">
-              <Grid>
-                <Ellipse Fill="{TemplateBinding Background}" Stroke="#F0E6D2" StrokeThickness="2"/>
-                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-              </Grid>
-              <ControlTemplate.Triggers>
-                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Opacity" Value="0.85"/></Trigger>
-              </ControlTemplate.Triggers>
-            </ControlTemplate>
-          </Button.Template>
-        </Button>
+        <StackPanel Grid.Column="2" VerticalAlignment="Center">
+          <Button x:Name="Botao" Width="76" Height="30" Cursor="Hand" Content="ON" Background="#0AC8B9" HorizontalAlignment="Right"
+                  ToolTip="Aceitar a partida sozinho: clique para ligar ou desligar">
+            <Button.Template>
+              <ControlTemplate TargetType="Button">
+                <Grid>
+                  <Path Stretch="Fill" Fill="#1E2328" Stroke="#C8AA6E" StrokeThickness="1" Data="M8,0 L76,0 L76,22 L68,30 L0,30 L0,8 Z"/>
+                  <Rectangle x:Name="Pino" Width="24" Height="20" HorizontalAlignment="Left" Margin="5,0,0,0" Fill="{TemplateBinding Background}"/>
+                  <TextBlock x:Name="Rotulo" Text="{TemplateBinding Content}" Foreground="#F0E6D2" FontSize="13" FontWeight="Bold"
+                             HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,11,0"/>
+                </Grid>
+                <ControlTemplate.Triggers>
+                  <Trigger Property="Content" Value="OFF">
+                    <Setter TargetName="Pino" Property="HorizontalAlignment" Value="Right"/>
+                    <Setter TargetName="Pino" Property="Margin" Value="0,0,5,0"/>
+                    <Setter TargetName="Rotulo" Property="HorizontalAlignment" Value="Left"/>
+                    <Setter TargetName="Rotulo" Property="Margin" Value="10,0,0,0"/>
+                  </Trigger>
+                  <Trigger Property="IsMouseOver" Value="True"><Setter Property="Opacity" Value="0.85"/></Trigger>
+                </ControlTemplate.Triggers>
+              </ControlTemplate>
+            </Button.Template>
+          </Button>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <TextBlock x:Name="Sino" Text="&#xE7ED;" FontFamily="Segoe MDL2 Assets" Foreground="#C8AA6E" FontSize="14" Cursor="Hand" Margin="0,0,13,0"
+                       ToolTip="Avisos no celular: clique para ligar ou desligar"/>
+            <TextBlock x:Name="Clipe" Text="&#xE718;" FontFamily="Segoe MDL2 Assets" Foreground="#5B5A56" FontSize="14" Cursor="Hand" Margin="0,0,13,0"
+                       ToolTip="Manter o painel aberto (não virar bolinha)"/>
+            <TextBlock x:Name="Ajuda" Text="&#xE946;" FontFamily="Segoe MDL2 Assets" Foreground="#C8AA6E" FontSize="14" Cursor="Hand" Margin="0,0,13,0"
+                       ToolTip="Mostrar ou esconder as opções"/>
+            <TextBlock x:Name="Fechar" Text="&#xE8BB;" FontFamily="Segoe MDL2 Assets" Foreground="#A09B8C" FontSize="13" Cursor="Hand"
+                       ToolTip="Fechar (desliga o Pick Automático)"/>
+          </StackPanel>
+        </StackPanel>
       </Grid>
-      <TextBlock x:Name="Fechar" Text="✕" Foreground="#A09B8C" FontSize="13" Cursor="Hand" ToolTip="Fechar (desliga o Pick Automático)"
-                 HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,7,11,0"/>
-      <TextBlock x:Name="Sino" Text="&#x1F514;" FontFamily="Segoe UI Emoji" Foreground="#F0E6D2" FontSize="13" Cursor="Hand"
-                 ToolTip="Avisos no celular: clique para ligar ou desligar" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,31,0"/>
-      <TextBlock x:Name="Clipe" Text="&#x1F4CC;" FontFamily="Segoe UI Emoji" Foreground="#5B6577" FontSize="13" Cursor="Hand"
-                 ToolTip="Manter o painel aberto (não virar bolinha)" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
-      <TextBlock x:Name="Ajuda" Text="?" Foreground="#C8AA6E" FontSize="14" FontWeight="Bold" Cursor="Hand" ToolTip="Mostrar ou esconder as opções"
-                 HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,12,8"/>
     </Grid>
     <Border x:Name="Info" Visibility="Collapsed" BorderBrush="#26334D" BorderThickness="0,1,0,0" Margin="14,0,14,12" Padding="0,10,0,0">
       <StackPanel>
@@ -128,6 +145,8 @@ function Pedir($caminho, [switch]$Post) {
     </Border>
     </StackPanel>
   </Border>
+  <Path x:Name="Contorno" Stroke="#C8AA6E" StrokeThickness="1.5" IsHitTestVisible="False"/>
+  </Grid>
   </Grid>
 </Window>
 '@
@@ -139,8 +158,22 @@ $botao    = $win.FindName('Botao')
 $painel   = $win.FindName('Painel')
 $bolinha  = $win.FindName('Bolinha')
 $info     = $win.FindName('Info')
-$verde    = [Windows.Media.BrushConverter]::new().ConvertFromString('#1FA84A')
-$vermelho = [Windows.Media.BrushConverter]::new().ConvertFromString('#D13639')
+$contorno = $win.FindName('Contorno')
+function Chanfro($w, $h, $c, $m) {
+    # contorno com os 4 cantos cortados (como os botoes do cliente do LoL); m = recuo para o traco caber
+    $pts = @(@(($c + $m), $m), @(($w - $c - $m), $m), @(($w - $m), ($c + $m)), @(($w - $m), ($h - $c - $m)), @(($w - $c - $m), ($h - $m)), @(($c + $m), ($h - $m)), @($m, ($h - $c - $m)), @($m, ($c + $m)))
+    $inv = [Globalization.CultureInfo]::InvariantCulture
+    $txt = ($pts | ForEach-Object { ([double]$_[0]).ToString($inv) + ',' + ([double]$_[1]).ToString($inv) }) -join ' L '
+    [Windows.Media.Geometry]::Parse("M $txt Z")
+}
+$painel.Add_SizeChanged({
+    $w = $painel.ActualWidth; $h = $painel.ActualHeight
+    if ($w -lt 30) { return }
+    $painel.Clip = Chanfro $w $h 14 0
+    $contorno.Data = Chanfro $w $h 14 0.75
+})
+$verde    = [Windows.Media.BrushConverter]::new().ConvertFromString('#0AC8B9')
+$vermelho = [Windows.Media.BrushConverter]::new().ConvertFromString('#E84057')
 
 if (Test-Path $Icone) {
     $bmp = New-Object Windows.Media.Imaging.BitmapImage
@@ -276,7 +309,7 @@ function Atualizar {
     $script:estado = $e
     $script:fixo = [bool]$e.painelFixo
     if ($script:fixo) { $clipe.Foreground = $Pincel.ConvertFromString('#C8AA6E'); if ($script:compacto) { Compactar $false } }
-    else { $clipe.Foreground = $Pincel.ConvertFromString('#5B6577') }
+    else { $clipe.Foreground = $Pincel.ConvertFromString('#5B5A56') }
     if ($e.aceitarSozinho) { $botao.Background = $verde; $botao.Content = 'ON'; $bolinha.Fill = $verde }
     else { $botao.Background = $vermelho; $botao.Content = 'OFF'; $bolinha.Fill = $vermelho }
 
@@ -289,8 +322,8 @@ function Atualizar {
     else { $detalhe.Text = 'Você aceita pelo celular' }
     if ($e.fila -and $e.phase -ne 'None') { $detalhe.Text += "  ·  $($e.fila)" }
     if ($e.runas) { $detalhe.Text = [string]$e.runas }
-    if ($e.avisarCelular) { $sino.Text = [char]::ConvertFromUtf32(0x1F514); $sino.Opacity = 1; $sino.ToolTip = 'Avisos no celular: LIGADOS (clique para desligar)' }
-    else { $sino.Text = [char]::ConvertFromUtf32(0x1F515); $sino.Opacity = 0.5; $sino.ToolTip = 'Avisos no celular: desligados (clique para ligar)' }
+    if ($e.avisarCelular) { $sino.Opacity = 1; $sino.ToolTip = 'Avisos no celular: LIGADOS (clique para desligar)' }
+    else { $sino.Opacity = 0.4; $sino.ToolTip = 'Avisos no celular: desligados (clique para ligar)' }
     $ligarRunas.Text = if ($e.puxarRunas) { 'Runas automáticas: LIGADAS (clique para desligar)' } else { 'Runas automáticas: desligadas (clique para ligar)' }
     Mostrar-Aram $e
 }
