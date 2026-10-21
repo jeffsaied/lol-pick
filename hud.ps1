@@ -159,6 +159,29 @@ $painel   = $win.FindName('Painel')
 $bolinha  = $win.FindName('Bolinha')
 $info     = $win.FindName('Info')
 $contorno = $win.FindName('Contorno')
+# Cada parte separada por linha (opcoes, melhores, adversarios, itens, aprimoramentos) ganha uma seta
+# no canto direito do titulo que minimiza so aquela parte; o titulo continua a mostra.
+function Minimizavel($nome) {
+    $caixa = $win.FindName($nome); $sp = $caixa.Child
+    $titulo = $sp.Children[0]; $sp.Children.RemoveAt(0)
+    $corpo = New-Object Windows.Controls.StackPanel
+    while ($sp.Children.Count) { $c = $sp.Children[0]; $sp.Children.RemoveAt(0); [void]$corpo.Children.Add($c) }
+    $cab = New-Object Windows.Controls.Grid
+    [void]$cab.Children.Add($titulo)
+    $seta = New-Object Windows.Controls.TextBlock
+    $seta.Text = [char]0xE70E; $seta.FontFamily = 'Segoe MDL2 Assets'; $seta.FontSize = 10; $seta.Cursor = 'Hand'
+    $seta.Foreground = [Windows.Media.BrushConverter]::new().ConvertFromString('#A09B8C')
+    $seta.HorizontalAlignment = 'Right'; $seta.VerticalAlignment = 'Top'; $seta.Padding = '8,0,0,4'; $seta.ToolTip = 'Minimizar'
+    $seta.Background = [Windows.Media.Brushes]::Transparent
+    [void]$cab.Children.Add($seta)
+    [void]$sp.Children.Add($cab); [void]$sp.Children.Add($corpo)
+    $seta.Add_MouseLeftButtonDown({
+        $_.Handled = $true
+        if ($corpo.Visibility -eq 'Visible') { $corpo.Visibility = 'Collapsed'; $seta.Text = [char]0xE70D; $seta.ToolTip = 'Mostrar' }
+        else { $corpo.Visibility = 'Visible'; $seta.Text = [char]0xE70E; $seta.ToolTip = 'Minimizar' }
+    }.GetNewClosure())
+}
+foreach ($n in 'Info', 'Melhores', 'Jogo', 'Itens', 'Augs') { Minimizavel $n }
 function Chanfro($w, $h, $c, $m) {
     # contorno com os 4 cantos cortados (como os botoes do cliente do LoL); m = recuo para o traco caber
     $pts = @(@(($c + $m), $m), @(($w - $c - $m), $m), @(($w - $m), ($c + $m)), @(($w - $m), ($h - $c - $m)), @(($w - $c - $m), ($h - $m)), @(($c + $m), ($h - $m)), @($m, ($h - $c - $m)), @($m, ($c + $m)))
