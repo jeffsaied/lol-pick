@@ -53,7 +53,7 @@ function Pedir($caminho, [switch]$Post) {
     <Border.Effect><DropShadowEffect BlurRadius="12" ShadowDepth="0" Opacity="0.7"/></Border.Effect>
     <StackPanel>
     <Grid Height="100">
-      <Grid Margin="14,12,30,12">
+      <Grid Margin="14,12,52,12">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
@@ -83,7 +83,7 @@ function Pedir($caminho, [switch]$Post) {
       <TextBlock x:Name="Fechar" Text="✕" Foreground="#A09B8C" FontSize="13" Cursor="Hand" ToolTip="Fechar (desliga o Pick Automático)"
                  HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,7,11,0"/>
       <TextBlock x:Name="Sino" Text="&#x1F514;" FontFamily="Segoe UI Emoji" Foreground="#F0E6D2" FontSize="13" Cursor="Hand"
-                 ToolTip="Avisos no celular: clique para ligar ou desligar" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,30,0"/>
+                 ToolTip="Avisos no celular: clique para ligar ou desligar" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,31,0"/>
       <TextBlock x:Name="Clipe" Text="&#x1F4CC;" FontFamily="Segoe UI Emoji" Foreground="#5B6577" FontSize="13" Cursor="Hand"
                  ToolTip="Manter o painel aberto (não virar bolinha)" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
       <TextBlock x:Name="Ajuda" Text="?" Foreground="#C8AA6E" FontSize="14" FontWeight="Bold" Cursor="Hand" ToolTip="Mostrar ou esconder as opções"
