@@ -49,6 +49,16 @@ final class Conexao {
 
     static void esquecer(Context c) { prefs(c).edit().clear().apply(); }
 
+    /** O link de cada aviso traz o endereco atual do PC: se o roteador trocou o IP, o app passa a usar o novo. */
+    static void atualizarEndereco(Context c, String link) {
+        Conexao atual = ler(c);
+        if (atual == null || link == null || !link.startsWith("http")) return;
+        Uri u = Uri.parse(link);
+        if (!atual.chave.equals(u.getQueryParameter("k")) || u.getHost() == null) return;
+        String pc = u.getScheme() + "://" + u.getHost() + (u.getPort() > 0 ? ":" + u.getPort() : "");
+        if (!pc.equals(atual.pc)) prefs(c).edit().putString("pc", pc).apply();
+    }
+
     static String ultimoAviso(Context c) { return prefs(c).getString("ultimo", null); }
     static void guardarUltimo(Context c, String id) { prefs(c).edit().putString("ultimo", id).apply(); }
 

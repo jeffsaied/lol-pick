@@ -116,6 +116,7 @@ public class AvisosService extends Service {
     }
 
     private void mostrar(JSONObject m) {
+        if (m.has("click")) Conexao.atualizarEndereco(this, m.optString("click"));
         String titulo = m.optString("title", "Pick Automático");
         String texto = m.optString("message", "");
         int id = (int) (System.currentTimeMillis() & 0x7fffffff);
