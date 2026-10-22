@@ -26,7 +26,11 @@ Um programinha fica rodando no PC onde o LoL está aberto. Quando a fila acha pa
 - [Node.js](https://nodejs.org) versão 18 ou mais nova. Se não tiver, o `iniciar.bat` oferece instalar a versão oficial pelo `winget`, o instalador da Microsoft que já vem no Windows 10 e 11.
 - Celular na mesma rede do PC (o PC pode estar no cabo, desde que seja o mesmo roteador).
 
-## Como usar
+## Jeito mais fácil: o .exe
+
+Baixe o **[PickAutomatico.exe](https://github.com/jeffsaied/pick-automatico/releases/latest/download/PickAutomatico.exe)** e dê dois cliques. Não precisa instalar o Node.js: ele já vem dentro. Na primeira vez o Windows pede permissão para liberar a porta 8787 (para o celular alcançar o PC), cria o atalho **Pick Automático** na Área de Trabalho e abre a tela de ligar o celular. O programa fica em `%LOCALAPPDATA%\PickAutomatico`. Para gerar o .exe a partir do código: `exe\gerar-exe.ps1`.
+
+## Como usar (pelo código)
 
 1. Baixe o projeto (botão **Code → Download ZIP**) e extraia numa pasta.
 2. Clique duas vezes em `iniciar.bat`. Na primeira vez o Windows pede permissão para liberar a porta 8787 no firewall.

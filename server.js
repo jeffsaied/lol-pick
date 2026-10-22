@@ -401,7 +401,7 @@ async function ciclo() {
     if (!emJogo) { partida = { modo: '', champ: 0, posicao: '' }; jogo = null; }
     else {
       if (!partida.champ) await acharPartida(); // o programa foi ligado com a partida ja andando
-      if (!jogo) await lerJogo();
+      if (!jogo || !jogo.avisado) await lerJogo(); // continua lendo ate o mapa aparecer, para avisar na hora certa
     }
   }
 
@@ -469,15 +469,22 @@ async function lerJogo() {
   const eu = lista.find((p) => [p.riotId, p.summonerName, `${p.riotIdGameName}#${p.riotIdTagLine}`].includes(meuNome));
   if (!eu) return;
   if (!partida.champ) partida.champ = idDe(eu);
+  const jaTinha = !!jogo;
   jogo = {
     aliados: lista.filter((p) => p.team === eu.team && p !== eu).map(idDe).filter(Boolean),
     inimigos: lista.filter((p) => p.team !== eu.team).map(idDe).filter(Boolean),
+    avisado: false,
   };
+  // a lista de jogadores ja responde na tela de carregamento; o aviso so sai quando o mapa aparece (evento GameStart)
+  const eventos = await doJogo('/liveclientdata/eventdata');
+  const noMapa = !!(eventos && Array.isArray(eventos.Events) && eventos.Events.some((e) => e.EventName === 'GameStart'));
   const nome = (id) => (champs.get(id) || { name: '' }).name;
   // runas e itens do campeao, caso a selecao tenha sido pulada (Swiftplay) ou o programa tenha ligado depois
   const c = champs.get(partida.champ);
-  if (c) opgg.runas(partida.modo, partida.champ, partida.posicao, c.alias).catch((e) => deuErro('dados do op.gg', e.message));
-  avisar('Partida iniciada', `Você de ${nome(partida.champ) || '?'} contra ${jogo.inimigos.map(nome).join(', ') || '?'}`, { priority: 3, tags: ['video_game'] });
+  if (c && !jaTinha) opgg.runas(partida.modo, partida.champ, partida.posicao, c.alias).catch((e) => deuErro('dados do op.gg', e.message));
+  if (!noMapa) return;
+  jogo.avisado = true;
+  avisar('No mapa: partida começou', `Você de ${nome(partida.champ) || '?'} contra ${jogo.inimigos.map(nome).join(', ') || '?'}`, { priority: 3, tags: ['video_game'] });
 }
 
 // a partida em poucas linhas, para o painel do PC e a pagina do celular; null fora de partida
