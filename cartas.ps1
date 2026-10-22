@@ -277,14 +277,14 @@ function Desenhar-Banco($cartas, $largura, $banco) {
         if ([string]$b.rotulo -eq '—') { continue }
         $cor = Cor-Tier $b.tier
         $selo = New-Object Windows.Controls.Border
-        $selo.Background = $Pincel.ConvertFromString('#E60A1428'); $selo.BorderBrush = $Pincel.ConvertFromString($cor); $selo.BorderThickness = 1.5
-        $selo.CornerRadius = 5; $selo.Padding = '0,1'; $selo.Width = $lado
+        # selo pequeno e simples, so o numero, no canto de cima a direita do icone
+        $selo.Background = $Pincel.ConvertFromString('#D9010A13'); $selo.CornerRadius = 3; $selo.Padding = '3,0'
         $txt = New-Object Windows.Controls.TextBlock
-        $txt.Text = [string]$b.rotulo; $txt.Foreground = $Pincel.ConvertFromString($cor)
-        $txt.FontSize = [Math]::Max(10, [Math]::Round($lado / 3.6)); $txt.FontWeight = 'Bold'; $txt.TextAlignment = 'Center'
+        $txt.Text = ([string]$b.rotulo).TrimEnd([char]0xBA); $txt.Foreground = $Pincel.ConvertFromString($cor)
+        $txt.FontSize = [Math]::Max(9, [Math]::Round($lado / 5)); $txt.FontWeight = 'SemiBold'
         $selo.Child = $txt
-        # no meio do icone, centralizado nos dois sentidos
-        [Windows.Controls.Canvas]::SetLeft($selo, $x); [Windows.Controls.Canvas]::SetTop($selo, [Math]::Max(0, $topo + ($lado - ($txt.FontSize * 1.33 + 5)) / 2))
+        $selo.Measure((New-Object Windows.Size([double]::PositiveInfinity, [double]::PositiveInfinity)))
+        [Windows.Controls.Canvas]::SetLeft($selo, $x + $lado - $selo.DesiredSize.Width - 1); [Windows.Controls.Canvas]::SetTop($selo, [Math]::Max(0, $topo + 1))
         [void]$quadro.Children.Add($selo)
     }
 }
