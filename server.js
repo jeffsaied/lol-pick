@@ -144,7 +144,8 @@ async function carregarCampeoes() {
   carregarConfrontos();
   carregarPerfis();
   const a = await lcu('GET', '/lol-game-data/assets/v1/cherry-augments.json');
-  if (ok(a) && Array.isArray(a.json)) aprimoramentos = new Map(a.json.map((x) => [x.id, { nome: x.nameTRA || '', icone: x.augmentSmallIconPath || '', aram: /^ARAM_/.test(x.augmentNameId || '') }]));
+  if (ok(a) && Array.isArray(a.json)) aprimoramentos = new Map(a.json.map((x) => [x.id, { nome: x.nameTRA || '', icone: x.augmentSmallIconPath || '', aram: /^ARAM_/.test(x.augmentNameId || ''), api: String(x.augmentNameId || '').replace(/^ARAM_/, '') }]));
+  carregarDescricoes();
   const it = await lcu('GET', '/lol-game-data/assets/v1/items.json');
   if (ok(it) && Array.isArray(it.json)) itensDoJogo = new Map(it.json.map((x) => [x.id, { nome: x.name || '', icone: x.iconPath || '' }]));
 }
@@ -230,6 +231,34 @@ let partida = { modo: '', champ: 0, posicao: '' }; // modo ARAM ('aram' ou 'deso
 let jogo = null; // com a partida aberta: { aliados, inimigos } em ids de campeao
 let jogoEm = 0;
 const NOME_MODO = { aram: 'ARAM', desordem: 'ARAM: Desordem' };
+
+// O que cada aprimoramento faz: o cliente do LoL nao traz o texto, o CommunityDragon traz (em portugues).
+// Vale 3 dias em aprimoramentos-desc.json. Os numeros sao os da Arena e podem mudar um pouco no ARAM.
+const DESC_ARQ = path.join(DIR, 'aprimoramentos-desc.json');
+let descricoes = {};
+try { descricoes = JSON.parse(fs.readFileSync(DESC_ARQ, 'utf8')); } catch {}
+function textoDoAprimoramento(a) {
+  const num = (v) => String(Math.round(v * 100) / 100).replace('.', ',');
+  return String(a.desc || '')
+    .replace(/@([A-Za-z0-9_]+)(\*(-?[\d.]+))?@/g, (_, nome, __, mult) => {
+      const v = (a.dataValues || {})[nome];
+      return Array.isArray(v) && typeof v[0] === 'number' ? num(v[0] * (mult ? Number(mult) : 1)) : '';
+    })
+    .replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+}
+async function carregarDescricoes() {
+  try {
+    if (descricoes.em && Date.now() - descricoes.em < 3 * 24 * 3600 * 1000) return;
+    const r = await fetch('https://raw.communitydragon.org/latest/cdragon/arena/pt_br.json');
+    if (!r.ok) return;
+    const j = await r.json();
+    const textos = {};
+    for (const a of j.augments || []) if (a.apiName && a.desc) textos[a.apiName] = textoDoAprimoramento(a);
+    descricoes = { em: Date.now(), textos };
+    fs.writeFileSync(DESC_ARQ, JSON.stringify(descricoes));
+  } catch (e) { console.log('descricoes dos aprimoramentos: ' + e.message); }
+}
+const descricaoDe = (id) => ((descricoes.textos || {})[(aprimoramentos.get(id) || {}).api] || '');
 const modoAram = () => (fila.id === 2400 || fila.gameMode === 'KIWI' ? 'desordem' : (fila.id === 450 || fila.gameMode === 'ARAM' ? 'aram' : ''));
 let sessaoCS = null; // ultima sessao crua da selecao
 let pegaveis = { ids: [], em: 0 };
@@ -574,7 +603,7 @@ function paraOPainel() {
     const a = opgg.aprimoramentos(partida.champ);
     desordem = {
       nome: nome(partida.champ), doCampeao: a.doCampeao,
-      lista: a.lista.map((x) => ({ id: x.id, tier: x.tier, nome: (aprimoramentos.get(x.id) || {}).nome || x.nome })).filter((x) => x.nome),
+      lista: a.lista.map((x) => ({ id: x.id, tier: x.tier, nome: (aprimoramentos.get(x.id) || {}).nome || x.nome, desc: descricaoDe(x.id) })).filter((x) => x.nome),
     };
   }
   return { modo: NOME_MODO[partida.modo] || '', tituloMelhores: aram ? `Melhores campeões  ·  ${NOME_MODO[partida.modo] || 'ARAM'}` : 'Melhores para este time', leitura, melhores, desordem, itens, jogo: resumoDoJogo() };

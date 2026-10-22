@@ -277,6 +277,21 @@ $jogo = $win.FindName('Jogo'); $jogoLista = $win.FindName('JogoLista')
 $itens = $win.FindName('Itens'); $itensTitulo = $win.FindName('ItensTitulo'); $itensLista = $win.FindName('ItensLista')
 $augs = $win.FindName('Augs'); $augsTitulo = $win.FindName('AugsTitulo'); $augsLista = $win.FindName('AugsLista')
 $assinaturaAram = ''
+# Balao (dica) no estilo do painel: aparece com o mouse em cima e some ao tirar
+function Balao($titulo, $texto) {
+    $t = New-Object Windows.Controls.ToolTip
+    $t.Background = $Pincel.ConvertFromString('#F00A1428'); $t.BorderBrush = $Pincel.ConvertFromString('#C8AA6E'); $t.BorderThickness = 1
+    $t.Padding = '10,8'; $t.MaxWidth = 300; $t.Placement = 'Left'; $t.HasDropShadow = $true
+    $sp = New-Object Windows.Controls.StackPanel
+    $a = New-Object Windows.Controls.TextBlock; $a.Text = $titulo; $a.Foreground = $Pincel.ConvertFromString('#C8AA6E'); $a.FontSize = 14; $a.FontWeight = 'SemiBold'; $a.Margin = '0,0,0,4'
+    $b = New-Object Windows.Controls.TextBlock; $b.Text = $texto; $b.Foreground = $Pincel.ConvertFromString('#F0E6D2'); $b.FontSize = 13; $b.TextWrapping = 'Wrap'
+    $c = New-Object Windows.Controls.TextBlock; $c.Text = 'Números da Arena; no ARAM podem mudar.'; $c.Foreground = $Pincel.ConvertFromString('#A09B8C'); $c.FontSize = 11; $c.Margin = '0,6,0,0'
+    [void]$sp.Children.Add($a); [void]$sp.Children.Add($b); [void]$sp.Children.Add($c)
+    $t.Content = $sp
+
+    return $t
+}
+
 function Mostrar-Aram($e) {
     $sig = ($e.jogo | ConvertTo-Json -Compress -Depth 4) + '|' + ($e.itens | ConvertTo-Json -Compress -Depth 4) + '|' + [string]$e.leitura + '|' + ($e.melhores | ConvertTo-Json -Compress -Depth 4) + '|' + ($e.desordem | ConvertTo-Json -Compress -Depth 4)
     if ($sig -eq $script:assinaturaAram) { return }
@@ -313,7 +328,11 @@ function Mostrar-Aram($e) {
     if ($e.desordem -and @($e.desordem.lista).Count -gt 0) {
         if ($e.desordem.doCampeao) { $augsTitulo.Text = "MELHORES APRIMORAMENTOS  ·  $($e.desordem.nome)".ToUpper() }
         else { $augsTitulo.Text = 'MELHORES APRIMORAMENTOS  ·  GERAL' }
-        foreach ($a in @($e.desordem.lista)) { [void]$augsLista.Children.Add((Linha "$Base/aug/$($a.id)" $a.nome '' $a.tier)) }
+        foreach ($a in @($e.desordem.lista)) {
+            $l = Linha "$Base/aug/$($a.id)" $a.nome '' $a.tier
+            if ($a.desc) { $l.ToolTip = (Balao $a.nome ([string]$a.desc)); $l.Background = [Windows.Media.Brushes]::Transparent; $l.Cursor = 'Help'; [Windows.Controls.ToolTipService]::SetInitialShowDelay($l, 150) }
+            [void]$augsLista.Children.Add($l)
+        }
         $augs.Visibility = 'Visible'
     } else { $augs.Visibility = 'Collapsed' }
 }

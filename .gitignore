@@ -21,3 +21,4 @@ android/local.properties
 # o .exe vai na release do GitHub, nao no codigo
 exe/PickAutomatico.exe
 exe/build/
+aprimoramentos-desc.json
