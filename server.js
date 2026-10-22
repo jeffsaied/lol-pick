@@ -259,6 +259,11 @@ async function carregarDescricoes() {
   } catch (e) { console.log('descricoes dos aprimoramentos: ' + e.message); }
 }
 const descricaoDe = (id) => ((descricoes.textos || {})[(aprimoramentos.get(id) || {}).api] || '');
+// resumo para caber numa linha do painel: a primeira frase, cortada em ~70 letras
+function resumoDe(texto) {
+  const frase = String(texto || '').split(/(?<=[.!?])\s/)[0];
+  return frase.length > 72 ? frase.slice(0, 70).replace(/\s+\S*$/, '') + '…' : frase;
+}
 const modoAram = () => (fila.id === 2400 || fila.gameMode === 'KIWI' ? 'desordem' : (fila.id === 450 || fila.gameMode === 'ARAM' ? 'aram' : ''));
 let sessaoCS = null; // ultima sessao crua da selecao
 let pegaveis = { ids: [], em: 0 };
@@ -603,7 +608,7 @@ function paraOPainel() {
     const a = opgg.aprimoramentos(partida.champ);
     desordem = {
       nome: nome(partida.champ), doCampeao: a.doCampeao,
-      lista: a.lista.map((x) => ({ id: x.id, tier: x.tier, nome: (aprimoramentos.get(x.id) || {}).nome || x.nome, desc: descricaoDe(x.id) })).filter((x) => x.nome),
+      lista: a.lista.map((x) => ({ id: x.id, tier: x.tier, nome: (aprimoramentos.get(x.id) || {}).nome || x.nome, desc: descricaoDe(x.id), resumo: resumoDe(descricaoDe(x.id)) })).filter((x) => x.nome),
     };
   }
   return { modo: NOME_MODO[partida.modo] || '', tituloMelhores: aram ? `Melhores campeões  ·  ${NOME_MODO[partida.modo] || 'ARAM'}` : 'Melhores para este time', leitura, melhores, desordem, itens, jogo: resumoDoJogo() };

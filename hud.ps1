@@ -329,7 +329,7 @@ function Mostrar-Aram($e) {
         if ($e.desordem.doCampeao) { $augsTitulo.Text = "MELHORES APRIMORAMENTOS  ·  $($e.desordem.nome)".ToUpper() }
         else { $augsTitulo.Text = 'MELHORES APRIMORAMENTOS  ·  GERAL' }
         foreach ($a in @($e.desordem.lista)) {
-            $l = Linha "$Base/aug/$($a.id)" $a.nome '' $a.tier
+            $l = Linha "$Base/aug/$($a.id)" $a.nome ([string]$a.resumo) $a.tier # o resumo fica na linha; o texto inteiro, no balao
             if ($a.desc) { $l.ToolTip = (Balao $a.nome ([string]$a.desc)); $l.Background = [Windows.Media.Brushes]::Transparent; $l.Cursor = 'Help'; [Windows.Controls.ToolTipService]::SetInitialShowDelay($l, 150) }
             [void]$augsLista.Children.Add($l)
         }
