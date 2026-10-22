@@ -7,7 +7,7 @@ Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue; New-Item -ItemTy
 
 # 1) os arquivos que o programa usa (os mesmos do zip), sem o que e de cada pessoa
 $arquivos = @('server.js','sugestao.js','desordem.js','atualizar-confrontos.js','confrontos.json','hud.ps1','cartas.ps1',
-              'index.html','pc.html','versao.txt','icone.ico','icone-192.png','icone-512.png','vendor/qrcode.js','app/PickAutomatico.apk','parar.bat','README.md')
+              'index.html','pc.html','versao.txt','icone.ico','icone-192.png','icone-512.png','vendor/qrcode.js','resumos-aprimoramentos.json','app/PickAutomatico.apk','parar.bat','README.md')
 $assets = @{}
 foreach ($a in $arquivos) { $assets[$a] = (Join-Path $raiz $a) }
 $lista = Join-Path $tmp 'lista.json'
